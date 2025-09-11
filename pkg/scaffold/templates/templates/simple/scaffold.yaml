@@ -1,0 +1,12 @@
+scaffold_version: "1.0"
+templates_dir: ""
+
+vars:
+  project_name: "test-project"
+
+files:
+  - path: "README.md"
+    template: "README.md.tmpl"
+  
+  - path: ".gitignore"
+    template: "gitignore.tmpl"

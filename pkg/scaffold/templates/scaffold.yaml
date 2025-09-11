@@ -1,0 +1,299 @@
+# Guild Scaffold Template Specification
+# This file defines the available templates and their usage patterns
+
+scaffold:
+  name: "Guild Framework Template Library"
+  version: "1.0.0"
+  description: "Comprehensive template library for Guild Framework projects"
+
+# Template categories
+categories:
+  campaign:
+    description: "Campaign-level configuration templates"
+    templates:
+      - name: "campaign.yml.tmpl"
+        description: "Main campaign configuration file"
+        output: ".campaign/campaign.yaml"
+        required_vars:
+          - campaign_name
+        optional_vars:
+          - description
+          - campaign_version
+          - daemon_enabled
+          - providers
+          - guilds
+      
+      - name: "socket-registry.yml.tmpl"
+        description: "Daemon socket registry configuration"
+        output: ".campaign/socket-registry.yaml"
+        required_vars:
+          - campaign_name
+        optional_vars:
+          - daemon_auto_start
+          - health_checks
+          - allowed_users
+      
+      - name: "database-init.sql.tmpl"
+        description: "SQLite database initialization script"
+        output: ".campaign/init.sql"
+        required_vars:
+          - campaign_name
+        optional_vars:
+          - campaign_version
+          - project_type
+          - project_language
+          - project_framework
+
+  guild:
+    description: "Guild team configuration templates"
+    templates:
+      - name: "guild.yml.tmpl"
+        description: "Guild team configuration"
+        output: "guilds/{{ .vars.guild_name | default .vars.campaign_name }}-guild.yaml"
+        required_vars:
+          - campaign_name
+          - agent_roles
+        optional_vars:
+          - guild_name
+          - guild_description
+          - max_agents
+          - coordination_style
+          - communication_pattern
+
+  agents:
+    description: "Individual agent configuration templates"
+    templates:
+      - name: "agents/guild-master.yml.tmpl"
+        description: "Guild master orchestrator agent"
+        output: "agents/{{ .vars.agent_name | default (printf \"%s-guild-master\" .vars.guild_name) }}.yaml"
+        required_vars:
+          - guild_name
+        optional_vars:
+          - agent_name
+          - provider
+          - model
+          - personality
+          - custom_guidelines
+      
+      - name: "agents/developer.yml.tmpl"
+        description: "Developer implementation agent"
+        output: "agents/{{ .vars.agent_name | default (printf \"%s-developer\" .vars.guild_name) }}.yaml"
+        required_vars:
+          - guild_name
+        optional_vars:
+          - agent_name
+          - developer_title
+          - specializations
+          - languages
+          - min_test_coverage
+      
+      - name: "agents/tester.yml.tmpl"
+        description: "Quality assurance testing agent"
+        output: "agents/{{ .vars.agent_name | default (printf \"%s-tester\" .vars.guild_name) }}.yaml"
+        required_vars:
+          - guild_name
+        optional_vars:
+          - agent_name
+          - tester_title
+          - specializations
+          - testing_frameworks
+
+  documentation:
+    description: "Project documentation templates"
+    templates:
+      - name: "README.md.tmpl"
+        description: "Project README with campaign overview"
+        output: "README.md"
+        required_vars:
+          - campaign_name
+        optional_vars:
+          - description
+          - guild_type
+          - agent_roles
+          - providers
+
+# Presets for common project types
+presets:
+  basic-development:
+    name: "Basic Development Campaign"
+    description: "Simple campaign with essential agents for development work"
+    templates:
+      - "campaign.yml.tmpl"
+      - "guild.yml.tmpl"
+      - "agents/guild-master.yml.tmpl"
+      - "agents/developer.yml.tmpl"
+      - "README.md.tmpl"
+    default_vars:
+      guild_type: "development"
+      max_agents: 4
+      coordination_style: "collaborative"
+      agent_roles:
+        - name: "guild-master"
+          type: "orchestrator"
+          description: "Lead guild coordinator"
+          responsibilities:
+            - "Task delegation and priority management"
+            - "Progress tracking and quality assurance"
+          capabilities:
+            - "coordination"
+            - "oversight"
+          config_file: "agents/guild-master.yml"
+        - name: "developer"
+          type: "implementer"
+          description: "Senior development specialist"
+          responsibilities:
+            - "Code implementation and architecture"
+            - "Code review and quality assurance"
+          capabilities:
+            - "development"
+            - "quality"
+          config_file: "agents/developer.yml"
+
+  full-stack:
+    name: "Full-Stack Development Campaign"
+    description: "Complete campaign with comprehensive agent roles"
+    templates:
+      - "campaign.yml.tmpl"
+      - "socket-registry.yml.tmpl"
+      - "database-init.sql.tmpl"
+      - "guild.yml.tmpl"
+      - "agents/guild-master.yml.tmpl"
+      - "agents/developer.yml.tmpl"
+      - "agents/tester.yml.tmpl"
+      - "README.md.tmpl"
+    default_vars:
+      guild_type: "full-stack"
+      max_agents: 8
+      coordination_style: "collaborative"
+      daemon_enabled: true
+      backup_enabled: true
+      code_review_required: true
+      testing_required: true
+      agent_roles:
+        - name: "guild-master"
+          type: "orchestrator"
+          description: "Lead guild coordinator and strategic planner"
+          responsibilities:
+            - "Task delegation and priority management"
+            - "Strategic planning and decision making"
+            - "Stakeholder communication"
+          capabilities:
+            - "coordination"
+            - "oversight"
+            - "communication"
+          config_file: "agents/guild-master.yml"
+        - name: "developer"
+          type: "implementer"
+          description: "Senior development specialist"
+          responsibilities:
+            - "Code implementation and architecture design"
+            - "Code review and quality assurance"
+            - "Technical documentation"
+          capabilities:
+            - "development"
+            - "quality"
+            - "collaboration"
+          config_file: "agents/developer.yml"
+        - name: "tester"
+          type: "validator"
+          description: "Quality assurance and testing specialist"
+          responsibilities:
+            - "Test strategy design and implementation"
+            - "Quality metrics tracking"
+            - "Defect identification and reporting"
+          capabilities:
+            - "testing"
+            - "quality"
+            - "analysis"
+          config_file: "agents/tester.yml"
+
+# Template variable schemas
+variable_schemas:
+  campaign_name:
+    type: "string"
+    required: true
+    pattern: "^[a-zA-Z0-9_-]+$"
+    description: "Unique identifier for the campaign"
+
+  description:
+    type: "string"
+    required: false
+    description: "Campaign description and purpose"
+
+  guild_type:
+    type: "string"
+    required: false
+    default: "development"
+    enum: ["development", "research", "testing", "analysis", "full-stack"]
+    description: "Primary focus area of the guild"
+
+  max_agents:
+    type: "integer"
+    required: false
+    default: 8
+    minimum: 1
+    maximum: 20
+    description: "Maximum number of agents in the guild"
+
+  coordination_style:
+    type: "string"
+    required: false
+    default: "collaborative"
+    enum: ["collaborative", "hierarchical", "autonomous"]
+    description: "Guild coordination and decision-making style"
+
+  providers:
+    type: "object"
+    required: false
+    description: "AI provider configurations"
+    properties:
+      anthropic:
+        type: "object"
+        properties:
+          api_key_env:
+            type: "string"
+            default: "ANTHROPIC_API_KEY"
+          default_model:
+            type: "string"
+            default: "claude-3-sonnet-20240229"
+      openai:
+        type: "object"
+        properties:
+          api_key_env:
+            type: "string"
+            default: "OPENAI_API_KEY"
+          default_model:
+            type: "string"
+            default: "gpt-4-1106-preview"
+
+# Template functions documentation
+functions:
+  campaignHash:
+    description: "Generate an 8-character hash from campaign name"
+    signature: "campaignHash(string) string"
+    example: "{{ .vars.campaign_name | campaignHash }}"
+
+  dateISO:
+    description: "Current timestamp in ISO 8601 format"
+    signature: "dateISO() string"
+    example: "{{ now | dateISO }}"
+
+  quote:
+    description: "Wrap string in double quotes"
+    signature: "quote(string) string"
+    example: "{{ .vars.name | quote }}"
+
+  indent:
+    description: "Indent text by specified number of spaces"
+    signature: "indent(int, string) string"
+    example: "{{ .vars.text | indent 4 }}"
+
+  toYAML:
+    description: "Convert value to YAML representation"
+    signature: "toYAML(any) string"
+    example: "{{ .vars.config | toYAML }}"
+
+  toJSON:
+    description: "Convert value to JSON representation"
+    signature: "toJSON(any) string"
+    example: "{{ .vars.data | toJSON }}"

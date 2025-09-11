@@ -1,0 +1,136 @@
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Binary output directory
+/bin/
+/dist/
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool
+*.out
+coverage.txt
+coverage.html
+*.cov
+
+# Dependency directories
+vendor/
+
+# Go workspace files
+go.work
+go.work.sum
+
+# IDE and editor files
+.idea/
+*.swp
+*.swo
+*~
+.vscode/
+*.sublime-project
+*.sublime-workspace
+.DS_Store
+
+# Backup files
+*.bak
+*.backup
+*.old
+*.orig
+*.tmp
+
+# Build artifacts
+/scaffold
+/guild-scaffold
+*.a
+*.o
+
+# Test artifacts
+/test-output/
+/test-results/
+*.test.out
+*.bench.out
+
+# Temporary files
+/tmp/
+/temp/
+.temp/
+*.temp
+
+# Log files
+*.log
+logs/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Generated files
+/generated/
+*_gen.go
+*_generated.go
+
+# Debug files
+debug
+debug.test
+*.pprof
+*.prof
+*.trace
+
+# OS generated files
+Thumbs.db
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Desktop.ini
+
+# Archives
+*.tar
+*.tar.gz
+*.zip
+*.rar
+*.7z
+
+# Project specific
+/output/
+/scaffold-output/
+/.campaign/
+/commissions/
+/corpus/
+/kanban/
+
+# Benchmark results
+/benchmarks/
+*.bench
+
+# Documentation build
+/docs/_build/
+/docs/_site/
+
+# Local testing directories
+/test-workspace/
+/test-projects/
+/scratch/
+
+# Cache directories
+.cache/
+.scaffold-cache/
+
+# Compiled CLI binary (specific name)
+/cmd/scaffold/scaffold
+
+# Integration test outputs
+/test/integration/output/
+/test/integration/tmp/
+
+# Performance profiling
+*.mem
+*.cpu
+*.mutex
