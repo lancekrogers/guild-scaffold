@@ -1,0 +1,131 @@
+# CLI Tool - Command-line application with subcommands
+# Cobra-based CLI tool with configuration, plugins, and completions
+
+_scaffold_version: "1.0.0"
+_templates_dir: "cli"
+
+mycli/:
+  # Command implementation
+  cmd/:
+    _files:
+      root.go: cmd/root.go.tmpl
+      version.go: cmd/version.go.tmpl
+      config.go: cmd/config.go.tmpl
+    
+    # Subcommands
+    init/:
+      _files:
+        init.go: cmd/init.go.tmpl
+      
+    run/:
+      _files:
+        run.go: cmd/run.go.tmpl
+        flags.go: cmd/run_flags.go.tmpl
+      
+    list/:
+      _files:
+        list.go: cmd/list.go.tmpl
+      
+  # Core functionality
+  internal/:
+    config/:
+      _files:
+        config.go: internal/config.go.tmpl
+        loader.go: internal/config_loader.go.tmpl
+        validator.go: internal/config_validator.go.tmpl
+      
+    executor/:
+      _files:
+        executor.go: internal/executor.go.tmpl
+        runner.go: internal/runner.go.tmpl
+      
+    output/:
+      _files:
+        formatter.go: internal/formatter.go.tmpl
+        table.go: internal/table.go.tmpl
+        json.go: internal/json.go.tmpl
+      
+    utils/:
+      _files:
+        helpers.go: internal/helpers.go.tmpl
+        validators.go: internal/validators.go.tmpl
+      
+  # Plugin system
+  plugins/:
+    _files:
+      README.md: plugins/readme.md.tmpl
+      loader.go: plugins/loader.go.tmpl
+      interface.go: plugins/interface.go.tmpl
+    examples/:
+      _files:
+        example_plugin.go: plugins/example.go.tmpl
+      
+  # Shell completions
+  completions/:
+    bash/:
+      _files:
+        mycli.bash: completions/bash.tmpl
+    zsh/:
+      _files:
+        _mycli: completions/zsh.tmpl
+    fish/:
+      _files:
+        mycli.fish: completions/fish.tmpl
+    powershell/:
+      _files:
+        mycli.ps1: completions/powershell.tmpl
+      
+  # Configuration templates
+  configs/:
+    _files:
+      default.yaml: configs/default.yaml.tmpl
+      example.yaml: configs/example.yaml.tmpl
+    
+  # Documentation
+  docs/:
+    _files:
+      README.md: docs/readme.md.tmpl
+    commands/:
+      _empty: true
+    examples/:
+      _empty: true
+    man/:
+      _files:
+        mycli.1: docs/man.1.tmpl
+      
+  # Testing
+  test/:
+    unit/:
+      _files:
+        cmd_test.go: test/cmd_test.go.tmpl
+    integration/:
+      _files:
+        cli_test.go: test/integration_test.go.tmpl
+    fixtures/:
+      _files:
+        config.yaml: test/fixtures/config.yaml.tmpl
+      
+  # Scripts
+  scripts/:
+    _files:
+      install.sh: scripts/install.sh.tmpl
+      build.sh: scripts/build.sh.tmpl
+      release.sh: scripts/release.sh.tmpl
+      generate-completions.sh: scripts/completions.sh.tmpl
+    
+  # CI/CD
+  .github/:
+    workflows/:
+      _files:
+        release.yaml: github/release.yaml.tmpl
+        test.yaml: github/test.yaml.tmpl
+      
+  # Root files
+  _files:
+    .goreleaser.yaml: goreleaser.yaml.tmpl
+    main.go: main.go.tmpl
+    README.md: readme.md.tmpl
+    LICENSE: license.tmpl
+    .gitignore: gitignore.tmpl
+    Makefile: makefile.tmpl
+    go.mod: go.mod.tmpl

@@ -165,7 +165,7 @@ func (d *templateDetector) matches(dir string) bool {
 
 // getAvailableTemplates returns the list of available templates
 func getAvailableTemplates() []TemplateInfo {
-	return []TemplateInfo{
+	templates := []TemplateInfo{
 		{
 			Name:        "campaign",
 			Description: "Complete campaign workspace with guild configuration",
@@ -218,6 +218,26 @@ func getAvailableTemplates() []TemplateInfo {
 			},
 		},
 	}
+	
+	// Add external templates from examples directory
+	ctx := context.Background()
+	externalTemplates, err := ListExternalTemplates(ctx)
+	if err == nil && len(externalTemplates) > 0 {
+		for _, path := range externalTemplates {
+			// Extract name from path (e.g., "examples/minimal.yaml" -> "minimal")
+			name := strings.TrimSuffix(filepath.Base(path), filepath.Ext(path))
+			
+			// Create template info for external template
+			templates = append(templates, TemplateInfo{
+				Name:        path,  // Use full path as name for clarity
+				Description: fmt.Sprintf("External template: %s", name),
+				UseCase:     "Custom project template from examples",
+				Category:    "external",
+			})
+		}
+	}
+	
+	return templates
 }
 
 // displayTemplatesTable displays templates in table format

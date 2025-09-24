@@ -1,0 +1,119 @@
+# Guild Campaign Structure - Full workspace for multi-project AI development
+# This creates a complete campaign workspace with guild configurations, 
+# agent definitions, task tracking, and knowledge management
+
+_scaffold_version: "1.0.0"
+_templates_dir: "campaign"
+
+_vars:
+  campaign_name: "MyWorkspace"
+  default_provider: "anthropic"
+  model: "claude-3.5-sonnet"
+
+campaign/:
+  # Core campaign configuration directory
+  .campaign/:
+    _files:
+      campaign.yaml: campaign.yaml.tmpl
+      memory.db: "{DATABASE_FILE}"
+      daemon.sock: "{SOCKET_FILE}"
+    
+    # Guild team configurations
+    guilds/:
+      _files:
+        default.yaml: guilds/default.yaml.tmpl
+        research.yaml: guilds/research.yaml.tmpl
+        development.yaml: guilds/development.yaml.tmpl
+      
+    # Individual agent configurations
+    agents/:
+      _files:
+        guild-master.yaml: agents/guild-master.yaml.tmpl
+        developer.yaml: agents/developer.yaml.tmpl
+        architect.yaml: agents/architect.yaml.tmpl
+        tester.yaml: agents/tester.yaml.tmpl
+        researcher.yaml: agents/researcher.yaml.tmpl
+      
+    # Memory and context storage
+    archives/:
+      sessions/:
+        _empty: true
+      summaries/:
+        _empty: true
+      _empty: true
+      
+    # Prompt templates and system instructions
+    prompts/:
+      _files:
+        system.md.tmpl: prompts/system.md.tmpl
+        commission.md.tmpl: prompts/commission.md.tmpl
+        review.md.tmpl: prompts/review.md.tmpl
+  
+  # Project specifications (commissions)
+  commissions/:
+    _files:
+      README.md: commissions/readme.md.tmpl
+      template.md: commissions/template.md.tmpl
+    active/:
+      _empty: true
+    completed/:
+      _empty: true
+    refined/:
+      _empty: true
+    
+  # Knowledge base and documentation
+  corpus/:
+    _files:
+      README.md: corpus/readme.md.tmpl
+    index/:
+      _empty: true
+    documents/:
+      _empty: true
+    embeddings/:
+      _empty: true
+      
+  # Task management (kanban board)
+  kanban/:
+    _files:
+      README.md: kanban/readme.md.tmpl
+    todo/:
+      _empty: true
+    in-progress/:
+      _empty: true
+    review/:
+      _empty: true
+    done/:
+      _empty: true
+    blocked/:
+      _empty: true
+      
+  # Project workspaces
+  projects/:
+    _empty: true
+    
+  # Research and experimentation
+  research/:
+    experiments/:
+      _empty: true
+    notebooks/:
+      _empty: true
+    results/:
+      _empty: true
+      
+  # Documentation
+  docs/:
+    _files:
+      README.md: docs/readme.md.tmpl
+    architecture/:
+      _empty: true
+    guides/:
+      _empty: true
+    api/:
+      _empty: true
+      
+  # Root files
+  _files:
+    README.md: readme.md.tmpl
+    .gitignore: gitignore.tmpl
+    Makefile: makefile.tmpl
+    .env.example: env.example.tmpl

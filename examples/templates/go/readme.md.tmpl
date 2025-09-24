@@ -1,0 +1,110 @@
+# {{ .ProjectName | default "MyProject" }}
+
+{{ .Description | default "A Go application built with guild-scaffold." }}
+
+## Project Structure
+
+```
+.
+├── cmd/                # Application entrypoints
+│   └── myapp/         # Main application
+├── pkg/               # Public packages
+│   ├── config/       # Configuration management
+│   └── server/       # HTTP server implementation
+├── internal/          # Private application code
+│   ├── database/     # Database connections and migrations
+│   └── utils/        # Internal utilities
+├── test/             # Integration tests
+├── config/           # Configuration files
+├── scripts/          # Build and deployment scripts
+└── docs/             # Documentation
+```
+
+## Getting Started
+
+### Prerequisites
+
+- Go {{ .GoVersion | default "1.21" }} or higher
+- Make (optional, for using Makefile commands)
+
+### Installation
+
+```bash
+# Clone the repository
+git clone {{ .RepoURL | default "https://github.com/example/project" }}
+cd {{ .ProjectName | lower | default "myproject" }}
+
+# Download dependencies
+go mod download
+
+# Build the application
+make build
+# or
+go build -o bin/myapp cmd/myapp/main.go
+```
+
+### Running
+
+```bash
+# Run with default configuration
+make run
+# or
+go run cmd/myapp/main.go
+
+# Run with custom configuration
+./bin/myapp -config config/custom.yaml
+```
+
+### Testing
+
+```bash
+# Run all tests
+make test
+# or
+go test ./...
+
+# Run with coverage
+make coverage
+# or
+go test -cover ./...
+```
+
+## Configuration
+
+Configuration can be provided through:
+
+1. Environment variables
+2. Configuration files (YAML)
+3. Command-line flags
+
+See `config/config.yaml` for available options.
+
+## Development
+
+### Project Layout
+
+This project follows the [Standard Go Project Layout](https://github.com/golang-standards/project-layout):
+
+- `/cmd` - Main applications
+- `/pkg` - Library code that can be used by external applications
+- `/internal` - Private application and library code
+- `/test` - Additional test applications and test data
+- `/config` - Configuration file templates
+- `/scripts` - Scripts for build, install, analysis, etc.
+- `/docs` - Design and user documents
+
+### Contributing
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## License
+
+{{ .License | default "MIT" }}
+
+## Author
+
+{{ .Author | default "Your Name" }}

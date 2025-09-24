@@ -1,0 +1,166 @@
+# Microservice - Production-ready microservice structure
+# Complete microservice with API, database, messaging, and observability
+
+_scaffold_version: "1.0.0"
+_templates_dir: "microservice"
+
+service/:
+  # API Implementation
+  api/:
+    proto/:
+      _files:
+        service.proto: proto/service.proto.tmpl
+      
+    openapi/:
+      _files:
+        spec.yaml: openapi/spec.yaml.tmpl
+      
+    graphql/:
+      _files:
+        schema.graphql: graphql/schema.graphql.tmpl
+      resolvers/:
+        _empty: true
+        
+  # Application code
+  cmd/:
+    server/:
+      _files:
+        main.go: cmd/server/main.go.tmpl
+      
+    worker/:
+      _files:
+        main.go: cmd/worker/main.go.tmpl
+      
+    migrate/:
+      _files:
+        main.go: cmd/migrate/main.go.tmpl
+      
+  # Business logic
+  internal/:
+    domain/:
+      entities/:
+        _files:
+          user.go: domain/entity.go.tmpl
+        
+      repositories/:
+        _files:
+          interfaces.go: domain/repository.go.tmpl
+        
+      services/:
+        _files:
+          user_service.go: domain/service.go.tmpl
+        
+    infrastructure/:
+      database/:
+        postgres/:
+          _files:
+            connection.go: infra/postgres.go.tmpl
+          migrations/:
+            _files:
+              001_initial.sql: migrations/initial.sql.tmpl
+            
+      cache/:
+        _files:
+          redis.go: infra/redis.go.tmpl
+        
+      messaging/:
+        _files:
+          kafka.go: infra/kafka.go.tmpl
+          rabbitmq.go: infra/rabbitmq.go.tmpl
+          
+    application/:
+      handlers/:
+        _files:
+          http.go: app/http_handler.go.tmpl
+          grpc.go: app/grpc_handler.go.tmpl
+          
+      middleware/:
+        _files:
+          auth.go: app/auth_middleware.go.tmpl
+          cors.go: app/cors_middleware.go.tmpl
+          ratelimit.go: app/ratelimit_middleware.go.tmpl
+          
+  # Observability
+  observability/:
+    metrics/:
+      _files:
+        prometheus.go: observability/prometheus.go.tmpl
+        
+    tracing/:
+      _files:
+        jaeger.go: observability/jaeger.go.tmpl
+        
+    logging/:
+      _files:
+        logger.go: observability/logger.go.tmpl
+        
+  # Configuration
+  configs/:
+    _files:
+      config.yaml: configs/config.yaml.tmpl
+      config.dev.yaml: configs/config.dev.yaml.tmpl
+      config.prod.yaml: configs/config.prod.yaml.tmpl
+      
+  # Deployment
+  deployments/:
+    kubernetes/:
+      _files:
+        deployment.yaml: k8s/deployment.yaml.tmpl
+        service.yaml: k8s/service.yaml.tmpl
+        configmap.yaml: k8s/configmap.yaml.tmpl
+        secrets.yaml: k8s/secrets.yaml.tmpl
+        ingress.yaml: k8s/ingress.yaml.tmpl
+        
+    docker/:
+      _files:
+        Dockerfile: docker/dockerfile.tmpl
+        docker-compose.yaml: docker/docker-compose.yaml.tmpl
+        
+    helm/:
+      _files:
+        Chart.yaml: helm/chart.yaml.tmpl
+      templates/:
+        _files:
+          deployment.yaml: helm/templates/deployment.yaml.tmpl
+          
+  # Testing
+  test/:
+    unit/:
+      _files:
+        service_test.go: test/unit_test.go.tmpl
+        
+    integration/:
+      _files:
+        api_test.go: test/integration_test.go.tmpl
+        
+    e2e/:
+      _files:
+        e2e_test.go: test/e2e_test.go.tmpl
+        
+    load/:
+      _files:
+        load_test.js: test/k6_load_test.js.tmpl
+        
+  # Documentation
+  docs/:
+    _files:
+      README.md: docs/readme.md.tmpl
+      API.md: docs/api.md.tmpl
+      ARCHITECTURE.md: docs/architecture.md.tmpl
+      
+  # CI/CD
+  .github/:
+    workflows/:
+      _files:
+        ci.yaml: github/ci.yaml.tmpl
+        cd.yaml: github/cd.yaml.tmpl
+        
+  .gitlab-ci.yml: gitlab-ci.yml.tmpl
+  
+  # Root files
+  _files:
+    README.md: readme.md.tmpl
+    Makefile: makefile.tmpl
+    go.mod: go.mod.tmpl
+    .gitignore: gitignore.tmpl
+    .env.example: env.example.tmpl

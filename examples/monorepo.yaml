@@ -1,0 +1,189 @@
+# Monorepo - Multi-project repository with shared code
+# Large-scale monorepo with multiple services, shared libraries, and tooling
+
+_scaffold_version: "1.0.0"
+_templates_dir: "monorepo"
+
+monorepo/:
+  # Services
+  services/:
+    auth-service/:
+      cmd/:
+        _files:
+          main.go: service/main.go.tmpl
+      internal/:
+        handlers/:
+          _files:
+            auth.go: service/handler.go.tmpl
+      _files:
+        Dockerfile: service/dockerfile.tmpl
+        go.mod: service/go.mod.tmpl
+      
+    user-service/:
+      cmd/:
+        _files:
+          main.go: service/main.go.tmpl
+      internal/:
+        handlers/:
+          _files:
+            user.go: service/handler.go.tmpl
+      _files:
+        Dockerfile: service/dockerfile.tmpl
+        go.mod: service/go.mod.tmpl
+      
+    order-service/:
+      cmd/:
+        _files:
+          main.go: service/main.go.tmpl
+      internal/:
+        handlers/:
+          _files:
+            order.go: service/handler.go.tmpl
+      _files:
+        Dockerfile: service/dockerfile.tmpl
+        go.mod: service/go.mod.tmpl
+        
+    payment-service/:
+      cmd/:
+        _files:
+          main.go: service/main.go.tmpl
+      internal/:
+        handlers/:
+          _files:
+            payment.go: service/handler.go.tmpl
+      _files:
+        Dockerfile: service/dockerfile.tmpl
+        go.mod: service/go.mod.tmpl
+        
+  # Shared libraries
+  libs/:
+    common/:
+      _files:
+        errors.go: libs/errors.go.tmpl
+        logger.go: libs/logger.go.tmpl
+        config.go: libs/config.go.tmpl
+        go.mod: libs/go.mod.tmpl
+        
+    database/:
+      _files:
+        postgres.go: libs/database.go.tmpl
+        migrations.go: libs/migrations.go.tmpl
+        go.mod: libs/go.mod.tmpl
+        
+    messaging/:
+      _files:
+        kafka.go: libs/messaging.go.tmpl
+        events.go: libs/events.go.tmpl
+        go.mod: libs/go.mod.tmpl
+        
+    auth/:
+      _files:
+        jwt.go: libs/jwt.go.tmpl
+        middleware.go: libs/middleware.go.tmpl
+        go.mod: libs/go.mod.tmpl
+        
+  # Tools and utilities
+  tools/:
+    migrator/:
+      _files:
+        main.go: tools/migrator.go.tmpl
+        go.mod: tools/go.mod.tmpl
+        
+    seeder/:
+      _files:
+        main.go: tools/seeder.go.tmpl
+        go.mod: tools/go.mod.tmpl
+        
+    cli/:
+      cmd/:
+        _files:
+          root.go: tools/cli/root.go.tmpl
+      _files:
+        main.go: tools/cli/main.go.tmpl
+        go.mod: tools/go.mod.tmpl
+        
+  # Infrastructure as Code
+  infrastructure/:
+    terraform/:
+      modules/:
+        vpc/:
+          _files:
+            main.tf: infra/terraform/vpc.tf.tmpl
+        eks/:
+          _files:
+            main.tf: infra/terraform/eks.tf.tmpl
+        rds/:
+          _files:
+            main.tf: infra/terraform/rds.tf.tmpl
+      _files:
+        main.tf: infra/terraform/main.tf.tmpl
+        variables.tf: infra/terraform/variables.tf.tmpl
+        outputs.tf: infra/terraform/outputs.tf.tmpl
+        
+    kubernetes/:
+      base/:
+        _files:
+          namespace.yaml: infra/k8s/namespace.yaml.tmpl
+          ingress.yaml: infra/k8s/ingress.yaml.tmpl
+      overlays/:
+        dev/:
+          _files:
+            kustomization.yaml: infra/k8s/dev-kustomization.yaml.tmpl
+        staging/:
+          _files:
+            kustomization.yaml: infra/k8s/staging-kustomization.yaml.tmpl
+        prod/:
+          _files:
+            kustomization.yaml: infra/k8s/prod-kustomization.yaml.tmpl
+            
+    helm/:
+      charts/:
+        service-chart/:
+          templates/:
+            _files:
+              deployment.yaml: infra/helm/deployment.yaml.tmpl
+              service.yaml: infra/helm/service.yaml.tmpl
+          _files:
+            Chart.yaml: infra/helm/chart.yaml.tmpl
+            values.yaml: infra/helm/values.yaml.tmpl
+            
+  # Scripts and automation
+  scripts/:
+    _files:
+      build-all.sh: scripts/build-all.sh.tmpl
+      test-all.sh: scripts/test-all.sh.tmpl
+      deploy.sh: scripts/deploy.sh.tmpl
+      setup-dev.sh: scripts/setup-dev.sh.tmpl
+      
+  # CI/CD
+  .github/:
+    workflows/:
+      _files:
+        ci.yaml: github/ci.yaml.tmpl
+        cd.yaml: github/cd.yaml.tmpl
+        codeql.yaml: github/codeql.yaml.tmpl
+        
+  .gitlab/:
+    _files:
+      .gitlab-ci.yml: gitlab/gitlab-ci.yml.tmpl
+      
+  # Documentation
+  docs/:
+    _files:
+      README.md: docs/readme.md.tmpl
+      ARCHITECTURE.md: docs/architecture.md.tmpl
+      CONTRIBUTING.md: docs/contributing.md.tmpl
+    services/:
+      _empty: true
+    api/:
+      _empty: true
+      
+  # Root configuration
+  _files:
+    README.md: readme.md.tmpl
+    .gitignore: gitignore.tmpl
+    Makefile: makefile.tmpl
+    go.work: go.work.tmpl
+    go.work.sum: "~"
+    docker-compose.yaml: docker-compose.yaml.tmpl
+    .env.example: env.example.tmpl

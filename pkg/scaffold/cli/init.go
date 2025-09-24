@@ -28,6 +28,20 @@ func ExecuteInit(ctx context.Context, options *InitOptions) error {
 		}
 	}
 	
+	// Check if this is an external template
+	if IsExternalTemplate(options.TemplateName) {
+		// Resolve the template path
+		templatePath, err := ResolveTemplatePath(options.TemplateName)
+		if err != nil {
+			return gerror.Wrap(err, gerror.ErrCodeNotFound, "failed to resolve template path").
+				WithDetails("template", options.TemplateName)
+		}
+		
+		// Load and execute external template
+		return LoadExternalTemplate(ctx, templatePath, options)
+	}
+	
+	// Standard embedded template handling
 	// Create scaffold configuration
 	scaffoldOpts, err := createScaffoldOptions(ctx, options)
 	if err != nil {

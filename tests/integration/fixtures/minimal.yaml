@@ -1,0 +1,17 @@
+# Minimal template for testing
+_scaffold_version: "1.0.0"
+_templates_dir: "minimal"
+
+_vars:
+  project_name: "MyProject"
+  module_name: "github.com/example/project"
+
+project/:
+  src/:
+    _files:
+      main.go: main.go.tmpl
+    
+  _files:
+    README.md: readme.md.tmpl
+    .gitignore: gitignore.tmpl
+    go.mod: go.mod.tmpl

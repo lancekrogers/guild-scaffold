@@ -1,0 +1,164 @@
+# Web Application - Full-stack web application
+# Modern web app with React frontend, Go backend, and PostgreSQL
+
+_scaffold_version: "1.0.0"
+_templates_dir: "webapp"
+
+webapp/:
+  # Backend API
+  backend/:
+    cmd/:
+      api/:
+        _files:
+          main.go: backend/cmd/main.go.tmpl
+        
+    internal/:
+      handlers/:
+        _files:
+          auth.go: backend/handlers/auth.go.tmpl
+          user.go: backend/handlers/user.go.tmpl
+          health.go: backend/handlers/health.go.tmpl
+        
+      middleware/:
+        _files:
+          auth.go: backend/middleware/auth.go.tmpl
+          cors.go: backend/middleware/cors.go.tmpl
+          logger.go: backend/middleware/logger.go.tmpl
+          ratelimit.go: backend/middleware/ratelimit.go.tmpl
+        
+      models/:
+        _files:
+          user.go: backend/models/user.go.tmpl
+          session.go: backend/models/session.go.tmpl
+        
+      database/:
+        _files:
+          postgres.go: backend/database/postgres.go.tmpl
+        migrations/:
+          _files:
+            001_users.sql: backend/migrations/users.sql.tmpl
+            002_sessions.sql: backend/migrations/sessions.sql.tmpl
+            
+      services/:
+        _files:
+          auth_service.go: backend/services/auth_service.go.tmpl
+          user_service.go: backend/services/user_service.go.tmpl
+          email_service.go: backend/services/email_service.go.tmpl
+          
+      utils/:
+        _files:
+          jwt.go: backend/utils/jwt.go.tmpl
+          validator.go: backend/utils/validator.go.tmpl
+          
+    pkg/:
+      config/:
+        _files:
+          config.go: backend/pkg/config.go.tmpl
+          
+    _files:
+      go.mod: backend/go.mod.tmpl
+      go.sum: "~"
+      .env.example: backend/env.example.tmpl
+      Dockerfile: backend/dockerfile.tmpl
+      
+  # Frontend React Application
+  frontend/:
+    public/:
+      _files:
+        index.html: frontend/public/index.html.tmpl
+        favicon.ico: frontend/public/favicon.ico.tmpl
+        manifest.json: frontend/public/manifest.json.tmpl
+        
+    src/:
+      _files:
+        index.tsx: frontend/src/index.tsx.tmpl
+        App.tsx: frontend/src/app.tsx.tmpl
+        
+      components/:
+        _files:
+          Header.tsx: frontend/src/components/header.tsx.tmpl
+          Footer.tsx: frontend/src/components/footer.tsx.tmpl
+          Layout.tsx: frontend/src/components/layout.tsx.tmpl
+          
+        auth/:
+          _files:
+            LoginForm.tsx: frontend/src/components/auth/login.tsx.tmpl
+            RegisterForm.tsx: frontend/src/components/auth/register.tsx.tmpl
+            
+      pages/:
+        _files:
+          Home.tsx: frontend/src/pages/home.tsx.tmpl
+          Dashboard.tsx: frontend/src/pages/dashboard.tsx.tmpl
+          Profile.tsx: frontend/src/pages/profile.tsx.tmpl
+          
+      services/:
+        _files:
+          api.ts: frontend/src/services/api.ts.tmpl
+          auth.ts: frontend/src/services/auth.ts.tmpl
+          
+      hooks/:
+        _files:
+          useAuth.ts: frontend/src/hooks/useAuth.ts.tmpl
+          useApi.ts: frontend/src/hooks/useApi.ts.tmpl
+          
+      utils/:
+        _files:
+          constants.ts: frontend/src/utils/constants.ts.tmpl
+          helpers.ts: frontend/src/utils/helpers.ts.tmpl
+          
+      styles/:
+        _files:
+          index.css: frontend/src/styles/index.css.tmpl
+          app.css: frontend/src/styles/app.css.tmpl
+          
+    _files:
+      package.json: frontend/package.json.tmpl
+      tsconfig.json: frontend/tsconfig.json.tmpl
+      .env.example: frontend/env.example.tmpl
+      vite.config.ts: frontend/vite.config.ts.tmpl
+      
+  # Infrastructure
+  infrastructure/:
+    docker/:
+      _files:
+        docker-compose.yaml: infrastructure/docker-compose.yaml.tmpl
+        docker-compose.dev.yaml: infrastructure/docker-compose.dev.yaml.tmpl
+        
+    nginx/:
+      _files:
+        nginx.conf: infrastructure/nginx.conf.tmpl
+        
+    kubernetes/:
+      _files:
+        deployment.yaml: infrastructure/k8s/deployment.yaml.tmpl
+        service.yaml: infrastructure/k8s/service.yaml.tmpl
+        ingress.yaml: infrastructure/k8s/ingress.yaml.tmpl
+        
+  # Scripts
+  scripts/:
+    _files:
+      setup.sh: scripts/setup.sh.tmpl
+      dev.sh: scripts/dev.sh.tmpl
+      build.sh: scripts/build.sh.tmpl
+      deploy.sh: scripts/deploy.sh.tmpl
+      
+  # CI/CD
+  .github/:
+    workflows/:
+      _files:
+        ci.yaml: github/ci.yaml.tmpl
+        deploy.yaml: github/deploy.yaml.tmpl
+        
+  # Documentation
+  docs/:
+    _files:
+      README.md: docs/readme.md.tmpl
+      API.md: docs/api.md.tmpl
+      DEPLOYMENT.md: docs/deployment.md.tmpl
+      
+  # Root files
+  _files:
+    README.md: readme.md.tmpl
+    .gitignore: gitignore.tmpl
+    Makefile: makefile.tmpl
+    .env.example: env.example.tmpl

@@ -1,0 +1,63 @@
+# Dynamic Project - Demonstrates variable usage
+# This example shows how variables can create dynamic content
+
+_scaffold_version: "1.0.0"
+_templates_dir: "dynamic"
+
+_vars:
+  project_name: "DynamicProject"
+  author: "Guild Framework"
+  license: "MIT"
+
+project/:
+  # Variable-generated files
+  _files:
+    .env: "{ENV_FILE}"
+    .uuid: "{UUID_FILE}"
+    .timestamp: "{TIMESTAMP_FILE}"
+    LICENSE: "{LICENSE_FILE}"
+  
+  # Configuration with variables
+  config/:
+    _files:
+      app.yaml: "{CONFIG_FILE}"
+      secrets.key: "{SECRET_FILE}"
+    
+  # Database initialization
+  database/:
+    _files:
+      schema.sql: "{DATABASE_FILE}"
+    
+  # Socket configuration
+  sockets/:
+    _files:
+      daemon.sock: "{SOCKET_FILE}"
+    
+  # Mixed approach - templates and variables
+  src/:
+    _files:
+      main.go: main.go.tmpl
+      config.go: config.go.tmpl
+      version.txt: "{TIMESTAMP_FILE}"
+    
+  # Empty directories with gitkeep
+  logs/:
+    _empty: true
+    
+  data/:
+    _empty: true
+    
+  tmp/:
+    _empty: true
+    
+  # Documentation
+  docs/:
+    _files:
+      README.md: docs/readme.md.tmpl
+      LICENSE: "{LICENSE_FILE}"
+    
+  # Standard templates with root files
+  _files:
+    README.md: readme.md.tmpl
+    .gitignore: gitignore.tmpl
+    Makefile: makefile.tmpl

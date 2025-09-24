@@ -1,0 +1,15 @@
+# Minimal - Bare minimum project structure
+# The absolute simplest starting point
+
+_scaffold_version: "1.0.0"
+_templates_dir: "minimal"
+
+project/:
+  src/:
+    _files:
+      main.go: main.go.tmpl
+    
+  _files:
+    README.md: readme.md.tmpl
+    .gitignore: gitignore.tmpl
+    go.mod: go.mod.tmpl

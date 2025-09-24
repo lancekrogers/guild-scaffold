@@ -1,0 +1,73 @@
+# Simple Go Project - Basic Go application structure
+# A clean, minimal Go project layout following standard conventions
+
+_scaffold_version: "1.0.0"
+_templates_dir: "go"
+
+myproject/:
+  # Source code
+  cmd/:
+    myapp/:
+      _files:
+        main.go: cmd/main.go.tmpl
+      
+  pkg/:
+    # Public packages
+    config/:
+      _files:
+        config.go: pkg/config.go.tmpl
+        config_test.go: pkg/config_test.go.tmpl
+      
+    server/:
+      _files:
+        server.go: pkg/server.go.tmpl
+        handler.go: pkg/handler.go.tmpl
+        middleware.go: pkg/middleware.go.tmpl
+      
+  internal/:
+    # Private packages
+    database/:
+      _files:
+        db.go: internal/database.go.tmpl
+      migrations/:
+        _empty: true
+        
+    utils/:
+      _files:
+        helpers.go: internal/utils.go.tmpl
+      
+  # Tests
+  test/:
+    integration/:
+      _files:
+        server_test.go: test/integration_test.go.tmpl
+    fixtures/:
+      _empty: true
+      
+  # Configuration
+  config/:
+    _files:
+      config.yaml: config/config.yaml.tmpl
+      config.dev.yaml: config/config.dev.yaml.tmpl
+      config.prod.yaml: config/config.prod.yaml.tmpl
+    
+  # Scripts
+  scripts/:
+    _files:
+      build.sh: scripts/build.sh.tmpl
+      test.sh: scripts/test.sh.tmpl
+    
+  # Documentation
+  docs/:
+    _files:
+      README.md: docs/readme.md.tmpl
+    
+  # Root files
+  _files:
+    go.mod: go.mod.tmpl
+    go.sum: "~"
+    README.md: readme.md.tmpl
+    .gitignore: gitignore.tmpl
+    Makefile: makefile.tmpl
+    Dockerfile: dockerfile.tmpl
+    .dockerignore: dockerignore.tmpl

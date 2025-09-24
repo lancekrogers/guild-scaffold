@@ -1,0 +1,15 @@
+# {{ .ProjectName | default "MyProject" }}
+
+A minimal Go project scaffolded with guild-scaffold.
+
+## Getting Started
+
+```bash
+go run src/main.go
+```
+
+## Build
+
+```bash
+go build -o {{ .ProjectName | lower | default "myproject" }} src/main.go
+```

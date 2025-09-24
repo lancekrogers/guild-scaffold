@@ -1,0 +1,26 @@
+package main
+
+import (
+	"fmt"
+	"log"
+	
+	"{{ .ModuleName | default "github.com/example/project" }}/pkg/config"
+	"{{ .ModuleName | default "github.com/example/project" }}/pkg/server"
+)
+
+func main() {
+	// Load configuration
+	cfg, err := config.Load()
+	if err != nil {
+		log.Fatal("Failed to load config:", err)
+	}
+
+	// Create and start server
+	srv := server.New(cfg)
+	
+	fmt.Printf("Starting {{ .ProjectName | default "MyProject" }} server on %s\n", cfg.Address)
+	
+	if err := srv.Start(); err != nil {
+		log.Fatal("Server failed:", err)
+	}
+}

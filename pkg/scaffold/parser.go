@@ -155,6 +155,18 @@ type parseResult struct {
 
 // parseYAML performs the actual YAML parsing with error enhancement
 func (p *yamlParser) parseYAML(data []byte, filename string) (*Recipe, error) {
+	// First check if this is a tree-like format
+	if isTreeFormat(data) {
+		treeParser := NewTreeParser()
+		recipe, err := treeParser.ParseTreeFormat(data)
+		if err != nil {
+			return nil, gerror.Wrap(err, ErrCodeYAMLParse, "failed to parse tree format").
+				WithDetails("file", filename)
+		}
+		return recipe, nil
+	}
+	
+	// Standard YAML parsing
 	var recipe Recipe
 	
 	// Configure YAML decoder
@@ -175,6 +187,21 @@ func (p *yamlParser) parseYAML(data []byte, filename string) (*Recipe, error) {
 	p.applyDefaults(&recipe)
 	
 	return &recipe, nil
+}
+
+// isTreeFormat checks if the YAML data is in tree-like format
+func isTreeFormat(data []byte) bool {
+	// Quick check for tree format indicators
+	dataStr := string(data)
+	
+	// Tree format has directories with trailing slashes and _files markers
+	hasTreeIndicators := strings.Contains(dataStr, "/:") && 
+		(strings.Contains(dataStr, "_files:") || strings.Contains(dataStr, "_empty:"))
+	
+	// Standard format has a top-level files: array
+	hasStandardFormat := regexp.MustCompile(`(?m)^files:\s*$`).MatchString(dataStr)
+	
+	return hasTreeIndicators && !hasStandardFormat
 }
 
 // enhanceYAMLError adds context and line information to YAML errors
@@ -244,13 +271,8 @@ func (p *yamlParser) validateRequiredFields(recipe *Recipe) error {
 		})
 	}
 	
-	if recipe.TemplatesDir == "" {
-		errors = append(errors, ValidationError{
-			Field:   "templates_dir",
-			Message: "templates directory is required",
-			Code:    ErrCodeValidation,
-		})
-	}
+	// TemplatesDir is optional - it can be empty or set to a specific directory
+	// Removed the requirement for templates_dir
 	
 	if len(recipe.Files) == 0 {
 		errors = append(errors, ValidationError{
