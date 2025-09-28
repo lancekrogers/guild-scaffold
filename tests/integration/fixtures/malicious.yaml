@@ -1,0 +1,36 @@
+# Test for path traversal and security checks
+_scaffold_version: "1.0.0"
+_templates_dir: "malicious"
+
+# Attempt path traversal in directory names (should be caught and handled safely)
+../../etc/:
+  _files:
+    passwd: malicious/passwd.tmpl
+
+../../../tmp/:
+  _files:
+    malicious.txt: malicious/malicious.txt.tmpl
+
+# Attempt absolute paths (should be rejected or handled safely)
+/etc/:
+  _files:
+    hosts: malicious/hosts.tmpl
+
+/tmp/:
+  _files:
+    test.txt: malicious/test.txt.tmpl
+
+# Valid directories that look suspicious but are safe
+etc/:
+  _files:
+    config.yaml: etc/config.yaml.tmpl
+
+tmp/:
+  _files:
+    cache.txt: tmp/cache.txt.tmpl
+
+# Files with suspicious names but in valid locations
+_files:
+  "../../README.md": malicious/readme_traversal.tmpl
+  "../test.txt": malicious/parent_test.tmpl
+  "./normal.txt": malicious/normal.txt.tmpl

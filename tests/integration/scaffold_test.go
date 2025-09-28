@@ -7,7 +7,6 @@
 package integration
 
 import (
-	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/require"

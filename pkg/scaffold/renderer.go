@@ -109,34 +109,35 @@ func (tr *templateRenderer) RenderRecipe(ctx context.Context, recipe *Recipe, op
 		renderCtx := tr.prepareRenderContext(recipe, file, options)
 		
 		// Check if file already exists
-		destPath := filepath.Join(options.Dest, file.Path)
-		if tr.fileExists(destPath) && !options.Overwrite {
+		// Note: file.Path is relative, and fileSystem already has basePath set
+		if tr.fileExists(file.Path) && !options.Overwrite {
 			stats.FilesSkipped++
 			continue
 		}
-		
+
 		// Render template
 		content, err := tr.RenderTemplate(ctx, file.Template, renderCtx)
 		if err != nil {
 			stats.FilesFailed++
-			
+
 			// In dry run or continue on error, log and continue
 			if options.Dry {
 				continue
 			}
-			
+
 			return stats, gerror.Wrap(err, gerror.ErrCodeInternal, "failed to render file").
 				WithDetails("fileIndex", i).
 				WithDetails("filePath", file.Path).
 				WithDetails("template", file.Template)
 		}
-		
+
 		// Write file (or skip in dry run)
 		if !options.Dry {
-			if err := tr.writeFile(ctx, destPath, content); err != nil {
+			// Use relative path since fileSystem has basePath configured
+			if err := tr.writeFile(ctx, file.Path, content); err != nil {
 				stats.FilesFailed++
 				return stats, gerror.Wrap(err, gerror.ErrCodeIO, "failed to write file").
-					WithDetails("filePath", destPath)
+					WithDetails("filePath", file.Path)
 			}
 		}
 		

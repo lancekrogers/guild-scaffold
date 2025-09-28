@@ -1,5 +1,13 @@
 # Guild Scaffold - Development Commands
 # https://github.com/casey/just
+#
+# ⚠️  SAFETY NOTICE:
+# This justfile prioritizes containerized testing to protect your filesystem.
+# Commands marked with "unsafe" can modify your local filesystem.
+# Default commands (like 'just test') only run in containers.
+#
+# Safe commands: test, integration-test, test-minimal-container, run-container
+# Unsafe commands: *-unsafe commands require confirmation
 
 # Import modular recipes
 import '.just/testing.just'
@@ -8,7 +16,21 @@ import '.just/development.just'
 
 # Default recipe - show available commands
 default:
-    @just --list --unsorted
+    @echo "Guild Scaffold - Safe Testing Commands"
+    @echo "======================================"
+    @echo ""
+    @echo "Safe Container Commands:"
+    @echo "  test                - Run all tests in containers"
+    @echo "  integration-test    - Run integration tests in containers"
+    @echo "  test-minimal-container - Test minimal template in container"
+    @echo "  run-container       - Run scaffold in container"
+    @echo ""
+    @echo "Other Commands:"
+    @echo "  build              - Build the scaffold binary"
+    @echo "  clean              - Clean build artifacts"
+    @echo "  coverage           - Generate coverage report"
+    @echo ""
+    @echo "Use 'just --list' to see all commands (including unsafe ones)"
 
 # Build the scaffold binary
 build:
@@ -16,8 +38,8 @@ build:
     @mkdir -p bin
     go build -v -o bin/scaffold ./cmd/scaffold
 
-# Run all tests
-test: unit-test integration-test-local
+# Run all tests (container-safe)
+test: unit-test integration-test
 
 # Run unit tests
 unit-test:
@@ -27,11 +49,15 @@ unit-test:
 # Run integration tests with containers (requires Docker)
 integration-test:
     @echo "Running container-based integration tests..."
+    @echo "ℹ️  These tests run in containers and won't affect your filesystem"
     go test -v -tags=integration ./tests/integration/... -timeout 10m
 
-# Run integration tests with memory filesystem (no Docker required)
-integration-test-local:
-    @echo "Running local integration tests..."
+# Run integration tests locally (WARNING: may affect filesystem)
+integration-test-local-unsafe:
+    @echo "⚠️  WARNING: This command may affect your filesystem!"
+    @echo "Use 'just integration-test' for safe container-based testing"
+    @echo "Press Ctrl+C to cancel, Enter to continue..."
+    @read
     go test -v ./pkg/scaffold/... -run ".*Integration.*"
 
 # Run integration tests in CI environment
@@ -82,20 +108,72 @@ deps:
 
 # Quick test (unit tests only, no race detector)
 quick:
-    @echo "Running quick tests..."
+    @echo "Running quick tests (safe - no filesystem operations)..."
     go test ./pkg/...
 
-# Run local scaffold for testing
-run-local TEMPLATE OUTPUT *ARGS:
-    @echo "Running scaffold locally..."
+# Run scaffold in container (safe)
+run-container TEMPLATE *ARGS:
+    @echo "Running scaffold in container (safe)..."
+    @echo "Building Linux binary..."
+    @GOOS=linux GOARCH=amd64 go build -o bin/scaffold-linux ./cmd/scaffold
+    docker run --rm \
+        -v $(pwd)/bin/scaffold-linux:/scaffold \
+        -v $(pwd)/examples:/examples:ro \
+        alpine:latest \
+        /scaffold init test-project \
+        --template /examples/{{TEMPLATE}} \
+        --output /output \
+        {{ARGS}}
+
+# UNSAFE: Run scaffold locally (WARNING: affects filesystem)
+run-local-unsafe TEMPLATE OUTPUT *ARGS:
+    @echo "⚠️  WARNING: This will affect your filesystem at {{OUTPUT}}!"
+    @echo "Use 'just run-container' for safe testing"
+    @echo "Press Ctrl+C to cancel, Enter to continue..."
+    @read
     go run ./cmd/scaffold init test-project \
         --template {{TEMPLATE}} \
         --output {{OUTPUT}} \
         {{ARGS}}
 
-# Test with minimal template
-test-minimal:
-    @echo "Testing minimal template..."
+# Test with minimal template (runs in container)
+test-minimal-container:
+    @echo "Testing minimal template in container..."
+    @echo "Building Linux binary for container..."
+    @GOOS=linux GOARCH=amd64 go build -o bin/scaffold-linux ./cmd/scaffold
+    @echo "Running in container..."
+    docker run --rm \
+        -v $(pwd)/bin/scaffold-linux:/scaffold \
+        -v $(pwd)/examples:/examples:ro \
+        alpine:latest \
+        /scaffold init test-minimal \
+        --template /examples/minimal.yaml \
+        --output /output \
+        --var project_name=TestProject \
+        --var module_name=github.com/test/project
+
+# Test with library template (runs in container)
+test-library-container:
+    @echo "Testing library template in container..."
+    @echo "Building Linux binary for container..."
+    @GOOS=linux GOARCH=amd64 go build -o bin/scaffold-linux ./cmd/scaffold
+    @echo "Running in container..."
+    docker run --rm \
+        -v $(pwd)/bin/scaffold-linux:/scaffold \
+        -v $(pwd)/examples:/examples:ro \
+        alpine:latest \
+        /scaffold init test-library \
+        --template /examples/library.yaml \
+        --output /output \
+        --var package_name=mylib \
+        --var module_name=github.com/test/mylib
+
+# UNSAFE: Test locally (WARNING: affects filesystem)
+test-minimal-unsafe:
+    @echo "⚠️  WARNING: This will write to /tmp on your filesystem!"
+    @echo "Use 'just test-minimal-container' for safe testing"
+    @echo "Press Ctrl+C to cancel, Enter to continue..."
+    @read
     go run ./cmd/scaffold init test-minimal \
         --template examples/minimal.yaml \
         --output /tmp/scaffold-test-minimal \
@@ -103,24 +181,18 @@ test-minimal:
         --var module_name=github.com/test/project \
         --force
 
-# Test with library template
-test-library:
-    @echo "Testing library template..."
-    go run ./cmd/scaffold init test-library \
-        --template examples/library.yaml \
-        --output /tmp/scaffold-test-library \
-        --var package_name=mylib \
-        --var module_name=github.com/test/mylib \
-        --force
-
 # Build and run in Docker for isolated testing
 docker-test:
     @echo "Building Docker image for testing..."
     docker build -t scaffold-test .
-    docker run --rm -v $(pwd)/examples:/examples scaffold-test \
+    @echo "Running in isolated container (safe)..."
+    docker run --rm \
+        -v $(pwd)/examples:/examples:ro \
+        scaffold-test \
         init test-project \
         --template /examples/minimal.yaml \
         --output /output
+    @echo "✅ Test completed in container (no filesystem changes)"
 
 # Watch for changes and run tests
 watch:
@@ -163,3 +235,8 @@ init-dev:
     just deps
     just generate-fixtures
     @echo "✅ Development environment ready"
+    @echo ""
+    @echo "🛡️  Remember: Use container-based commands for testing:"
+    @echo "  - 'just test' for all tests"
+    @echo "  - 'just integration-test' for integration tests"
+    @echo "  - Avoid '*-unsafe' commands unless necessary"

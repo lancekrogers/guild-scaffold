@@ -2,7 +2,6 @@ package scaffold
 
 import (
 	"context"
-	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -85,16 +84,21 @@ func (osfs *OSFileSystem) WriteFile(path string, data []byte, perm os.FileMode) 
 	if err != nil {
 		return err
 	}
-	
+
 	// Check if file already exists
-	if osfs.Exists(safePath) {
+	if osfs.Exists(path) {
 		return ErrFileExists(path)
 	}
-	
+
 	// Create directory if needed
-	dir := filepath.Dir(safePath)
-	if err := osfs.MkdirAll(dir, 0755); err != nil {
-		return err
+	// Note: we need to get the directory relative to the base path
+	dir := filepath.Dir(path)
+	if dir != "." && dir != "" {
+		if err := osfs.MkdirAll(dir, 0755); err != nil {
+			return gerror.Wrap(err, gerror.ErrCodeIO, "failed to create directory").
+				WithDetails("dir", dir).
+				WithDetails("file", path)
+		}
 	}
 	
 	// Write file atomically using temporary file
@@ -175,11 +179,24 @@ func (osfs *OSFileSystem) Stat(path string) (os.FileInfo, error) {
 
 // MkdirAll creates directories
 func (osfs *OSFileSystem) MkdirAll(path string, perm os.FileMode) error {
+	// Special case: if path is "." or empty and we have a basePath, create the basePath
+	if (path == "." || path == "") && osfs.basePath != "" {
+		if err := os.MkdirAll(osfs.basePath, perm); err != nil {
+			return gerror.Wrap(err, gerror.ErrCodeIO, "failed to create base directory").
+				WithDetails("path", osfs.basePath).
+				WithDetails("permissions", perm)
+		}
+		return nil
+	}
+
 	safePath, err := osfs.safePath(path)
 	if err != nil {
-		return err
+		// Add more details to understand what's failing
+		return gerror.Wrap(err, gerror.ErrCodeIO, "failed to validate path for MkdirAll").
+			WithDetails("input_path", path).
+			WithDetails("base_path", osfs.basePath)
 	}
-	
+
 	if err := os.MkdirAll(safePath, perm); err != nil {
 		return gerror.Wrap(err, gerror.ErrCodeIO, "failed to create directories").
 			WithDetails("path", path).
@@ -250,46 +267,64 @@ func (osfs *OSFileSystem) safePath(path string) (string, error) {
 	osfs.mu.RLock()
 	basePath := osfs.basePath
 	osfs.mu.RUnlock()
-	
+
 	// Clean the path
 	cleanPath := filepath.Clean(path)
-	
-	// Check for path traversal attempts
-	if filepath.IsAbs(cleanPath) {
-		return "", ErrInvalidPath(path, "absolute paths not allowed")
-	}
-	
-	if containsPathTraversal(cleanPath) {
+
+	// Check for path traversal attempts after cleaning
+	// This properly checks if the cleaned path tries to escape
+	if strings.HasPrefix(cleanPath, "..") || strings.Contains(cleanPath, string(filepath.Separator)+"..") {
 		return "", ErrInvalidPath(path, "path traversal not allowed")
 	}
-	
-	// If no base path restriction, return cleaned path
+
+	// If no base path restriction
 	if basePath == "" {
-		return cleanPath, nil
+		// Allow absolute paths when no base restriction
+		if filepath.IsAbs(cleanPath) {
+			return cleanPath, nil
+		}
+		// For relative paths, resolve to absolute
+		absPath, err := filepath.Abs(cleanPath)
+		if err != nil {
+			return "", gerror.Wrap(err, gerror.ErrCodeInternal, "failed to resolve path").
+				WithDetails("path", path)
+		}
+		return absPath, nil
 	}
-	
-	// Join with base path
+
+	// With base path restriction, reject absolute paths
+	if filepath.IsAbs(cleanPath) {
+		return "", ErrInvalidPath(path, "absolute paths not allowed when base path is set")
+	}
+
+	// Join with base path (basePath is already absolute from NewOSFileSystem)
 	fullPath := filepath.Join(basePath, cleanPath)
-	
-	// Ensure the resolved path is still within base path
+
+	// Get the real absolute path (handles any symlinks)
 	absFullPath, err := filepath.Abs(fullPath)
 	if err != nil {
-		return "", gerror.Wrap(err, gerror.ErrCodeInternal, "failed to resolve absolute path").
+		return "", gerror.Wrap(err, gerror.ErrCodeInternal, "failed to resolve full path").
 			WithDetails("path", path)
 	}
-	
-	absBasePath, err := filepath.Abs(basePath)
-	if err != nil {
-		return "", gerror.Wrap(err, gerror.ErrCodeInternal, "failed to resolve base path").
+
+	// Check if the resolved path is within the base path
+	// basePath is already absolute, so no need to call Abs again
+
+	// Ensure base path ends with separator for consistent comparison
+	baseWithSep := basePath
+	if !strings.HasSuffix(baseWithSep, string(filepath.Separator)) {
+		baseWithSep = basePath + string(filepath.Separator)
+	}
+
+	// Path is valid if it's the exact base or starts with base+separator
+	if absFullPath != basePath && !strings.HasPrefix(absFullPath, baseWithSep) {
+		return "", gerror.New(gerror.ErrCodeInvalidInput, "path escapes base directory", nil).
+			WithDetails("path", path).
+			WithDetails("cleanPath", cleanPath).
+			WithDetails("absFullPath", absFullPath).
 			WithDetails("basePath", basePath)
 	}
-	
-	// Check if the resolved path is within the base path
-	rel, err := filepath.Rel(absBasePath, absFullPath)
-	if err != nil || filepath.IsAbs(rel) || containsPathTraversal(rel) {
-		return "", ErrInvalidPath(path, "path escapes base directory")
-	}
-	
+
 	return absFullPath, nil
 }
 
@@ -297,24 +332,25 @@ func (osfs *OSFileSystem) safePath(path string) (string, error) {
 func containsPathTraversal(path string) bool {
 	// Normalize path separators
 	normalizedPath := filepath.ToSlash(path)
-	
+
 	// Check for various path traversal patterns
+	if normalizedPath == ".." {
+		return true
+	}
+
 	patterns := []string{
 		"../",
 		"..\\",
 		"/..",
 		"\\..",
 	}
-	
+
 	for _, pattern := range patterns {
-		if fmt.Sprintf("%s", normalizedPath) != normalizedPath {
-			continue
-		}
-		if containsPattern(normalizedPath, pattern) {
+		if strings.Contains(normalizedPath, pattern) {
 			return true
 		}
 	}
-	
+
 	return false
 }
 

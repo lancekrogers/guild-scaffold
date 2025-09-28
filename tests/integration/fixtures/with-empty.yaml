@@ -1,0 +1,21 @@
+# Test for empty directories
+_scaffold_version: "1.0.0"
+_templates_dir: "with-empty"
+
+logs/:
+  _empty: true
+
+data/:
+  _empty: true
+
+tmp/:
+  _empty: true
+
+assets/:
+  images/:
+    _empty: true
+  styles/:
+    _empty: true
+
+_files:
+  README.md: README.md.tmpl

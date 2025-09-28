@@ -1,3 +1,3 @@
-module {{ .ModuleName | default "github.com/example/project" }}
+module {{ .module_name | default "github.com/example/project" }}
 
-go {{ .GoVersion | default "1.21" }}
+go {{ .go_version | default "1.21" }}

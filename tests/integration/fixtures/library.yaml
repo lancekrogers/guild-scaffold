@@ -1,0 +1,84 @@
+# Go Library - Reusable Go package/library structure
+# Clean library layout with examples, benchmarks, and documentation
+
+_scaffold_version: "1.0.0"
+_templates_dir: "library"
+
+mylib/:
+  # Root and main package files
+  _files:
+    # Main package files
+    doc.go: doc.go.tmpl
+    lib.go: lib.go.tmpl
+    lib_test.go: lib_test.go.tmpl
+    # Root configuration files
+    go.mod: go.mod.tmpl
+    go.sum: "~"
+    README.md: readme.md.tmpl
+    LICENSE: license.tmpl
+    .gitignore: gitignore.tmpl
+    Makefile: makefile.tmpl
+    CHANGELOG.md: changelog.md.tmpl
+  
+  # Sub-packages
+  core/:
+    _files:
+      core.go: core/core.go.tmpl
+      core_test.go: core/core_test.go.tmpl
+    
+  utils/:
+    _files:
+      helpers.go: utils/helpers.go.tmpl
+      helpers_test.go: utils/helpers_test.go.tmpl
+    
+  types/:
+    _files:
+      types.go: types/types.go.tmpl
+      interfaces.go: types/interfaces.go.tmpl
+    
+  # Internal implementation
+  internal/:
+    impl/:
+      _files:
+        implementation.go: internal/impl.go.tmpl
+    constants/:
+      _files:
+        constants.go: internal/constants.go.tmpl
+      
+  # Examples
+  examples/:
+    basic/:
+      _files:
+        main.go: examples/basic.go.tmpl
+        README.md: examples/basic_readme.md.tmpl
+        
+    advanced/:
+      _files:
+        main.go: examples/advanced.go.tmpl
+        config.yaml: examples/advanced_config.yaml.tmpl
+        
+  # Benchmarks
+  benchmarks/:
+    _files:
+      bench_test.go: benchmarks/bench_test.go.tmpl
+      README.md: benchmarks/readme.md.tmpl
+      
+  # Testing utilities
+  testdata/:
+    _files:
+      sample.json: testdata/sample.json.tmpl
+      expected.txt: testdata/expected.txt.tmpl
+      
+  # Documentation
+  docs/:
+    _files:
+      README.md: docs/readme.md.tmpl
+      API.md: docs/api.md.tmpl
+      CONTRIBUTING.md: docs/contributing.md.tmpl
+      
+  # CI/CD
+  .github/:
+    workflows/:
+      _files:
+        test.yaml: github/test.yaml.tmpl
+        release.yaml: github/release.yaml.tmpl

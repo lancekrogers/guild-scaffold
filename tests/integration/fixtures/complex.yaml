@@ -1,0 +1,54 @@
+# Complex project structure for testing
+_scaffold_version: "1.0.0"
+_templates_dir: "complex"
+
+_vars:
+  project_name: "ComplexProject"
+  module_name: "github.com/example/complex"
+  author: "Test Author"
+  license: "MIT"
+
+cmd/:
+  server/:
+    _files:
+      main.go: cmd/server/main.go.tmpl
+  client/:
+    _files:
+      main.go: cmd/client/main.go.tmpl
+
+pkg/:
+  api/:
+    _files:
+      api.go: pkg/api/api.go.tmpl
+  models/:
+    _files:
+      models.go: pkg/models/models.go.tmpl
+
+internal/:
+  config/:
+    _files:
+      config.go: internal/config/config.go.tmpl
+  database/:
+    _files:
+      db.go: internal/database/db.go.tmpl
+
+deployments/:
+  docker/:
+    _files:
+      Dockerfile: deployments/docker/Dockerfile.tmpl
+      docker-compose.yml: deployments/docker/docker-compose.yml.tmpl
+  kubernetes/:
+    _files:
+      deployment.yaml: deployments/kubernetes/deployment.yaml.tmpl
+
+docs/:
+  _files:
+    README.md: docs/README.md.tmpl
+
+tests/:
+  _empty: true
+
+_files:
+  README.md: README.md.tmpl
+  go.mod: go.mod.tmpl
+  .gitignore: gitignore.tmpl

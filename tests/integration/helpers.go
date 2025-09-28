@@ -45,7 +45,7 @@ func NewTestContainer(t *testing.T) (*TestContainer, error) {
 			{
 				Source:   testcontainers.GenericBindMountSource{HostPath: scaffoldBinary},
 				Target:   "/scaffold",
-				ReadOnly: true,
+				ReadOnly: false,
 			},
 		},
 	}
@@ -58,11 +58,28 @@ func NewTestContainer(t *testing.T) (*TestContainer, error) {
 		return nil, fmt.Errorf("failed to start container: %w", err)
 	}
 
+	// Check if scaffold binary exists and make it executable
+	exitCode, output, err := container.Exec(ctx, []string{"ls", "-la", "/scaffold"})
+	if err != nil {
+		container.Terminate(ctx)
+		return nil, fmt.Errorf("failed to check scaffold binary: %w", err)
+	}
+	if exitCode != 0 {
+		outputBytes, _ := io.ReadAll(output)
+		container.Terminate(ctx)
+		return nil, fmt.Errorf("scaffold binary not found, ls output: %s", string(outputBytes))
+	}
+
 	// Make scaffold executable in container
-	exitCode, _, err := container.Exec(ctx, []string{"chmod", "+x", "/scaffold"})
-	if err != nil || exitCode != 0 {
+	exitCode, output, err = container.Exec(ctx, []string{"chmod", "+x", "/scaffold"})
+	if err != nil {
 		container.Terminate(ctx)
 		return nil, fmt.Errorf("failed to make scaffold executable: %w", err)
+	}
+	if exitCode != 0 {
+		outputBytes, _ := io.ReadAll(output)
+		container.Terminate(ctx)
+		return nil, fmt.Errorf("chmod failed with exit code %d, output: %s", exitCode, string(outputBytes))
 	}
 
 	return &TestContainer{
@@ -74,11 +91,12 @@ func NewTestContainer(t *testing.T) (*TestContainer, error) {
 
 // buildScaffoldBinary builds the scaffold binary for testing
 func buildScaffoldBinary(t *testing.T) (string, error) {
+	// Always build a Linux binary for container testing
 	tempDir := t.TempDir()
 	binaryPath := filepath.Join(tempDir, "scaffold")
 
-	// Build the binary
-	cmd := fmt.Sprintf("go build -o %s ../../cmd/scaffold", binaryPath)
+	// Build the binary for Linux (required for Alpine containers)
+	cmd := fmt.Sprintf("cd ../../ && GOOS=linux GOARCH=amd64 go build -o %s ./cmd/scaffold", binaryPath)
 	if err := runCommand(cmd); err != nil {
 		return "", fmt.Errorf("failed to build binary: %w", err)
 	}
@@ -88,12 +106,12 @@ func buildScaffoldBinary(t *testing.T) (string, error) {
 
 // runCommand executes a shell command
 func runCommand(cmd string) error {
-	parts := strings.Fields(cmd)
-	if len(parts) == 0 {
+	if cmd == "" {
 		return fmt.Errorf("empty command")
 	}
 
-	c := exec.Command(parts[0], parts[1:]...)
+	// Use shell to handle complex commands with && and environment variables
+	c := exec.Command("sh", "-c", cmd)
 	c.Stdout = os.Stdout
 	c.Stderr = os.Stderr
 	return c.Run()

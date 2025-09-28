@@ -68,7 +68,9 @@ func (se *ScaffoldEngine) RenderFS(ctx context.Context, recipe *Recipe, options 
 	}
 	
 	// Ensure destination directory exists
-	if err := se.fileSystem.MkdirAll(options.Dest, 0755); err != nil {
+	// Note: if fileSystem is OSFileSystem with basePath set to options.Dest,
+	// we should create the root directory (".")
+	if err := se.fileSystem.MkdirAll(".", 0755); err != nil {
 		return nil, gerror.Wrap(err, gerror.ErrCodeIO, "failed to create destination directory").
 			WithDetails("dest", options.Dest)
 	}

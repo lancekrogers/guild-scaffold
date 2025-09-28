@@ -1,4 +1,4 @@
-# {{ .ProjectName | default "MyProject" }}
+# {{ .project_name | default "MyProject" }}
 
 A minimal Go project scaffolded with guild-scaffold.
 
@@ -11,5 +11,5 @@ go run src/main.go
 ## Build
 
 ```bash
-go build -o {{ .ProjectName | lower | default "myproject" }} src/main.go
+go build -o {{ with .project_name }}{{ . | lower }}{{ else }}myproject{{ end }} src/main.go
 ```
