@@ -69,25 +69,30 @@ just docker-clean
 ## Test Scenarios
 
 ### 1. Basic Functionality (`TestMinimalScaffoldInContainer`)
+
 - Creates a simple project structure
 - Verifies template variable substitution
 - Checks file creation and content
 
 ### 2. Complex Structures (`TestScaffoldComplexStructure`)
+
 - Tests deep directory hierarchies
 - Multiple template variables
 - Conditional file generation
 
 ### 3. Empty Directories (`TestScaffoldEmptyDirectories`)
+
 - Ensures empty directories are created correctly
 - Tests the `_empty` directive
 
 ### 4. Error Handling
+
 - **Existing Files**: Tests behavior with existing files (with/without --force)
 - **Path Traversal**: Ensures malicious paths are blocked
 - **Invalid Templates**: Verifies proper error reporting
 
 ### 5. Dry Run Mode (`TestScaffoldDryRun`)
+
 - Verifies no files are created
 - Checks preview output accuracy
 
@@ -142,11 +147,13 @@ func TestYourFeature(t *testing.T) {
 ## Container Details
 
 ### Base Image
+
 - Default: `alpine:latest` (5MB base image)
 - Minimal overhead, fast startup
 - Can be customized via `IMAGE` environment variable
 
 ### Container Lifecycle
+
 1. Container created with scaffold binary mounted
 2. Test fixtures copied into container
 3. Scaffold command executed
@@ -154,6 +161,7 @@ func TestYourFeature(t *testing.T) {
 5. Container automatically cleaned up
 
 ### Resource Management
+
 - Containers are ephemeral (removed after test)
 - Automatic cleanup on test failure
 - Parallel test execution supported
@@ -199,18 +207,21 @@ just debug-test TestScaffoldComplexStructure
 ### Common Issues
 
 1. **Docker not running**
+
    ```
    Error: Cannot connect to Docker daemon
    Solution: Start Docker Desktop or dockerd service
    ```
 
 2. **Permission denied**
+
    ```
    Error: Permission denied while trying to connect to Docker
    Solution: Add user to docker group or use sudo
    ```
 
 3. **Container startup timeout**
+
    ```
    Error: Container failed to start within timeout
    Solution: Increase timeout in test or check Docker resources
@@ -219,17 +230,20 @@ just debug-test TestScaffoldComplexStructure
 ### Debugging Tips
 
 1. **Keep container running for inspection**:
+
    ```go
    // Comment out defer container.Cleanup() to keep container alive
    // Then inspect with: docker exec -it <container-id> sh
    ```
 
 2. **Enable verbose output**:
+
    ```bash
    just test-verbose
    ```
 
 3. **Check container logs**:
+
    ```bash
    docker logs <container-id>
    ```
