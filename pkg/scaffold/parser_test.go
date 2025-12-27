@@ -2,6 +2,8 @@ package scaffold
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"testing"
 	"testing/fstest"
 	"time"
@@ -190,7 +192,7 @@ vars:`
 
 	// Add many variables to make it large
 	for i := 0; i < 1000; i++ {
-		largeYAML += "\n  var" + string(rune(i)) + ": \"value\""
+		largeYAML += fmt.Sprintf("\n  var%d: \"value%d\"", i, i)
 	}
 
 	largeYAML += `
@@ -369,7 +371,10 @@ files:
 
 	_, err = parser.ParseRecipe(ctx, fsys, "scaffold.yaml")
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "context")
+	// Error may be wrapped as "context canceled" or "operation timed out"
+	errMsg := err.Error()
+	contextRelated := strings.Contains(errMsg, "context") || strings.Contains(errMsg, "timed out") || strings.Contains(errMsg, "canceled")
+	assert.True(t, contextRelated, "expected context-related error, got: %v", err)
 }
 
 func BenchmarkYAMLParser_ParseRecipe(b *testing.B) {

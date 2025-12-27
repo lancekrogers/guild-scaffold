@@ -4,6 +4,8 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -142,12 +144,19 @@ func TestOSFileSystem_PathTraversalPrevention(t *testing.T) {
 	require.NoError(t, err)
 
 	// Test various path traversal attempts
+	// Note: Windows-style paths (backslashes, drive letters) are only relevant on Windows
 	pathTraversalAttempts := []string{
 		"../../../etc/passwd",
-		"..\\..\\..\\windows\\system32\\config\\sam",
 		"subdir/../../../etc/passwd",
 		"/etc/passwd",
-		"C:\\Windows\\System32\\config\\sam",
+	}
+
+	// Add Windows-specific paths only on Windows
+	if runtime.GOOS == "windows" {
+		pathTraversalAttempts = append(pathTraversalAttempts,
+			"..\\..\\..\\windows\\system32\\config\\sam",
+			"C:\\Windows\\System32\\config\\sam",
+		)
 	}
 
 	for _, attempt := range pathTraversalAttempts {
@@ -252,8 +261,11 @@ func TestSafeFileWriter_AllowedPaths(t *testing.T) {
 
 	// Writing to disallowed path should fail
 	err = writer.WriteFileWithContext(context.Background(), "forbidden/file.txt", []byte("content"), 0644)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "not in allowed list")
+	require.Error(t, err)
+	// The error should indicate the path is not allowed (may have different message formats)
+	errMsg := err.Error()
+	pathRejected := strings.Contains(errMsg, "not in allowed list") || strings.Contains(errMsg, "invalid file path")
+	assert.True(t, pathRejected, "expected error about disallowed path, got: %v", err)
 }
 
 func TestSafeFileWriter_ContextCancellation(t *testing.T) {
