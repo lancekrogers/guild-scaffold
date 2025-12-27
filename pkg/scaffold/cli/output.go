@@ -8,20 +8,20 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/guild-framework/guild-core/pkg/gerror"
-	"github.com/guild-framework/guild-scaffold/pkg/scaffold/templates"
+	"github.com/guild-framework/guild-scaffold/pkg/scaffold"
 	"gopkg.in/yaml.v3"
 )
 
 // TemplateInfo represents information about an available template
 type TemplateInfo struct {
-	Name        string `json:"name" yaml:"name"`
-	Description string `json:"description" yaml:"description"`
-	UseCase     string `json:"use_case" yaml:"use_case"`
-	Category    string `json:"category" yaml:"category"`
+	Name        string             `json:"name" yaml:"name"`
+	Description string             `json:"description" yaml:"description"`
+	Category    string             `json:"category" yaml:"category"`
+	Source      string             `json:"source" yaml:"source"`
+	Builtin     bool               `json:"builtin,omitempty" yaml:"builtin,omitempty"`
 	Variables   []TemplateVariable `json:"variables,omitempty" yaml:"variables,omitempty"`
 }
 
@@ -44,11 +44,11 @@ type ValidationResult struct {
 
 // ValidationError represents a validation error
 type ValidationError struct {
-	Type        string `json:"type" yaml:"type"`
-	Message     string `json:"message" yaml:"message"`
-	Field       string `json:"field,omitempty" yaml:"field,omitempty"`
-	Line        int    `json:"line,omitempty" yaml:"line,omitempty"`
-	Suggestion  string `json:"suggestion,omitempty" yaml:"suggestion,omitempty"`
+	Type       string `json:"type" yaml:"type"`
+	Message    string `json:"message" yaml:"message"`
+	Field      string `json:"field,omitempty" yaml:"field,omitempty"`
+	Line       int    `json:"line,omitempty" yaml:"line,omitempty"`
+	Suggestion string `json:"suggestion,omitempty" yaml:"suggestion,omitempty"`
 }
 
 // ListTemplates lists available templates with basic output
@@ -57,7 +57,7 @@ func ListTemplates(ctx context.Context) error {
 		Verbose: false,
 		Format:  "table",
 	}
-	
+
 	return ListTemplatesWithOptions(ctx, options)
 }
 
@@ -66,9 +66,12 @@ func ListTemplatesWithOptions(ctx context.Context, options *ListOptions) error {
 	if err := options.Validate(); err != nil {
 		return gerror.Wrap(err, gerror.ErrCodeValidation, "invalid list options")
 	}
-	
-	templates := getAvailableTemplates()
-	
+
+	templates, err := getAvailableTemplates(ctx)
+	if err != nil {
+		return gerror.Wrap(err, gerror.ErrCodeInternal, "failed to load templates")
+	}
+
 	switch options.Format {
 	case "table":
 		return displayTemplatesTable(templates, options.Verbose)
@@ -86,17 +89,17 @@ func ValidateScaffold(ctx context.Context, options *ValidateOptions) error {
 	if err := options.Validate(); err != nil {
 		return gerror.Wrap(err, gerror.ErrCodeValidation, "invalid validate options")
 	}
-	
+
 	var result ValidationResult
-	
+
 	if options.Template != "" {
-		// Validate built-in template
-		result = validateBuiltinTemplate(ctx, options.Template)
+		// Validate template from registry
+		result = validateRegistryTemplate(ctx, options.Template)
 	} else {
 		// Validate file
 		result = validateScaffoldFile(ctx, options.ScaffoldPath)
 	}
-	
+
 	switch options.Format {
 	case "text":
 		return displayValidationText(result, options.Verbose)
@@ -109,148 +112,90 @@ func ValidateScaffold(ctx context.Context, options *ValidateOptions) error {
 	}
 }
 
-// DetectTemplateFromContext automatically detects the appropriate template
-func DetectTemplateFromContext(ctx context.Context, outputDir string) string {
-	// Check for existing project indicators
-	detectors := []templateDetector{
-		{
-			name:     "existing_campaign",
-			pattern:  ".campaign/campaign.yaml",
-			template: "campaign",
-		},
-		{
-			name:     "existing_guild_core",
-			pattern:  "pkg/agent/interface.go",
-			template: "guild_core_extension",
-		},
-		{
-			name:     "go_module",
-			pattern:  "go.mod",
-			template: "single_agent",
-		},
-		{
-			name:     "typescript_project",
-			pattern:  "package.json",
-			template: "single_agent",
-		},
+// getAvailableTemplates loads templates from the registry
+func getAvailableTemplates(ctx context.Context) ([]TemplateInfo, error) {
+	loader, err := scaffold.NewRegistryLoader()
+	if err != nil {
+		return nil, err
 	}
-	
-	// Check each detector
-	for _, detector := range detectors {
-		if detector.matches(outputDir) {
-			fmt.Printf("🔍 Detected %s, using %s template\n", 
-				detector.name, detector.template)
-			return detector.template
+
+	registry, err := loader.Load(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	entries := registry.List()
+	templates := make([]TemplateInfo, 0, len(entries))
+
+	for _, entry := range entries {
+		info := TemplateInfo{
+			Name:        entry.Name,
+			Description: entry.Description,
+			Category:    entry.Category,
+			Source:      entry.Source,
+			Builtin:     entry.Builtin,
 		}
-	}
-	
-	// Default to campaign template
-	fmt.Println("📝 No existing project detected, using campaign template")
-	return "campaign"
-}
 
-// templateDetector represents a way to detect project type
-type templateDetector struct {
-	name     string
-	pattern  string
-	template string
-}
-
-// matches checks if the detector pattern matches the directory
-func (d *templateDetector) matches(dir string) bool {
-	path := filepath.Join(dir, d.pattern)
-	_, err := os.Stat(path)
-	return err == nil
-}
-
-// getAvailableTemplates returns the list of available templates
-func getAvailableTemplates() []TemplateInfo {
-	templates := []TemplateInfo{
-		{
-			Name:        "campaign",
-			Description: "Complete campaign workspace with guild configuration",
-			UseCase:     "New multi-project workspace with coordinated guilds",
-			Category:    "workspace",
-			Variables: []TemplateVariable{
-				{Name: "project_name", Description: "Name of the campaign project", Type: "string", Required: true},
-				{Name: "author_name", Description: "Primary author name", Type: "string", Required: false},
-				{Name: "coordination_style", Description: "Guild coordination approach", Type: "string", Default: "collaborative"},
-			},
-		},
-		{
-			Name:        "guild_core_extension",
-			Description: "Extension to existing guild-core repository",
-			UseCase:     "Adding new features or capabilities to guild-core",
-			Category:    "extension",
-			Variables: []TemplateVariable{
-				{Name: "extension_type", Description: "Type of extension", Type: "string", Default: "full-feature"},
-				{Name: "package_name", Description: "Go package name", Type: "string", Required: true},
-			},
-		},
-		{
-			Name:        "single_agent",
-			Description: "Simple single-agent project",
-			UseCase:     "Rapid prototyping or simple automation tasks",
-			Category:    "agent",
-			Variables: []TemplateVariable{
-				{Name: "agent_role", Description: "Primary role of the agent", Type: "string", Default: "assistant"},
-				{Name: "agent_capabilities", Description: "Agent capabilities", Type: "array", Required: false},
-			},
-		},
-		{
-			Name:        "multi_guild",
-			Description: "Multiple coordinated guilds",
-			UseCase:     "Large-scale multi-team projects with complex coordination",
-			Category:    "workspace",
-			Variables: []TemplateVariable{
-				{Name: "guild_count", Description: "Number of guilds", Type: "int", Default: 3},
-				{Name: "coordination_pattern", Description: "Inter-guild coordination", Type: "string", Default: "hierarchical"},
-			},
-		},
-		{
-			Name:        "research_project",
-			Description: "Research and experimentation workspace",
-			UseCase:     "AI research, experimentation, and exploration",
-			Category:    "research",
-			Variables: []TemplateVariable{
-				{Name: "research_area", Description: "Primary research focus", Type: "string", Required: false},
-				{Name: "experiment_tracking", Description: "Enable experiment tracking", Type: "bool", Default: true},
-			},
-		},
-	}
-	
-	// Add external templates from examples directory
-	ctx := context.Background()
-	externalTemplates, err := ListExternalTemplates(ctx)
-	if err == nil && len(externalTemplates) > 0 {
-		for _, path := range externalTemplates {
-			// Extract name from path (e.g., "examples/minimal.yaml" -> "minimal")
-			name := strings.TrimSuffix(filepath.Base(path), filepath.Ext(path))
-			
-			// Create template info for external template
-			templates = append(templates, TemplateInfo{
-				Name:        path,  // Use full path as name for clarity
-				Description: fmt.Sprintf("External template: %s", name),
-				UseCase:     "Custom project template from examples",
-				Category:    "external",
-			})
+		// Try to load variables from scaffold definition
+		if def, _, err := scaffold.ResolveScaffold(ctx, entry); err == nil {
+			info.Variables = convertVariables(def.Variables)
 		}
+
+		templates = append(templates, info)
 	}
-	
-	return templates
+
+	return templates, nil
+}
+
+// convertVariables converts scaffold variables to template variables
+func convertVariables(vars map[string]scaffold.VariableDefinition) []TemplateVariable {
+	result := make([]TemplateVariable, 0, len(vars))
+	for name, def := range vars {
+		result = append(result, TemplateVariable{
+			Name:        name,
+			Description: def.Description,
+			Type:        def.Type,
+			Default:     def.Default,
+			Required:    def.Required,
+		})
+	}
+	return result
 }
 
 // displayTemplatesTable displays templates in table format
 func displayTemplatesTable(templates []TemplateInfo, verbose bool) error {
+	if len(templates) == 0 {
+		fmt.Println("No templates found.")
+		fmt.Println()
+		fmt.Println("💡 To add templates, create a registry file:")
+		fmt.Println("   ~/.guild/scaffold.yaml (global)")
+		fmt.Println("   .campaign/scaffold.yaml (project)")
+		return nil
+	}
+
 	fmt.Println("📋 Available Templates:")
 	fmt.Println()
-	
+
 	for _, tmpl := range templates {
-		fmt.Printf("🎯 %s\n", tmpl.Name)
-		fmt.Printf("   %s\n", tmpl.Description)
-		fmt.Printf("   Use case: %s\n", tmpl.UseCase)
-		fmt.Printf("   Category: %s\n", tmpl.Category)
-		
+		// Choose icon based on source
+		icon := "📁"
+		if tmpl.Builtin {
+			icon = "⚡"
+		} else if tmpl.Source == "global" {
+			icon = "🌐"
+		} else if tmpl.Source == "project" {
+			icon = "📂"
+		}
+
+		fmt.Printf("%s %s\n", icon, tmpl.Name)
+		if tmpl.Description != "" {
+			fmt.Printf("   %s\n", tmpl.Description)
+		}
+		if tmpl.Category != "" {
+			fmt.Printf("   Category: %s\n", tmpl.Category)
+		}
+		fmt.Printf("   Source: %s\n", tmpl.Source)
+
 		if verbose && len(tmpl.Variables) > 0 {
 			fmt.Println("   Variables:")
 			for _, variable := range tmpl.Variables {
@@ -262,16 +207,19 @@ func displayTemplatesTable(templates []TemplateInfo, verbose bool) error {
 				if variable.Default != nil {
 					defaultStr = fmt.Sprintf(" [default: %v]", variable.Default)
 				}
-				fmt.Printf("     • %s (%s)%s%s - %s\n", 
-					variable.Name, variable.Type, required, defaultStr, variable.Description)
+				fmt.Printf("     • %s (%s)%s%s\n",
+					variable.Name, variable.Type, required, defaultStr)
+				if variable.Description != "" {
+					fmt.Printf("       %s\n", variable.Description)
+				}
 			}
 		}
 		fmt.Println()
 	}
-	
+
 	fmt.Println("💡 Use --template <name> to select a specific template")
-	fmt.Println("💡 Use --interactive for guided template selection")
-	
+	fmt.Println("💡 Use --verbose for variable details")
+
 	return nil
 }
 
@@ -293,28 +241,23 @@ func displayTemplatesYAML(templates []TemplateInfo) error {
 	})
 }
 
-// validateBuiltinTemplate validates a built-in template
-func validateBuiltinTemplate(ctx context.Context, templateName string) ValidationResult {
-	// Get embedded templates filesystem
-	templateFS, err := templates.GetEmbeddedTemplatesFS()
+// validateRegistryTemplate validates a template from the registry
+func validateRegistryTemplate(ctx context.Context, templateName string) ValidationResult {
+	loader, err := scaffold.NewRegistryLoader()
 	if err != nil {
 		return ValidationResult{
 			Valid:    false,
 			Template: templateName,
 			Errors: []ValidationError{
 				{
-					Type:    "filesystem_error",
-					Message: fmt.Sprintf("Failed to access templates filesystem: %v", err),
+					Type:    "loader_error",
+					Message: fmt.Sprintf("Failed to create registry loader: %v", err),
 				},
 			},
 		}
 	}
-	
-	// Construct scaffold path
-	scaffoldPath := fmt.Sprintf("scaffolds/%s/scaffold.yaml", templateName)
-	
-	// Try to read and validate the scaffold file
-	_, err = templateFS.Open(scaffoldPath)
+
+	entry, err := loader.FindScaffold(ctx, templateName)
 	if err != nil {
 		return ValidationResult{
 			Valid:    false,
@@ -322,14 +265,40 @@ func validateBuiltinTemplate(ctx context.Context, templateName string) Validatio
 			Errors: []ValidationError{
 				{
 					Type:       "template_not_found",
-					Message:    fmt.Sprintf("Template '%s' not found", templateName),
+					Message:    fmt.Sprintf("Template '%s' not found in registry", templateName),
 					Suggestion: "Use 'scaffold list' to see available templates",
 				},
 			},
 		}
 	}
-	
-	// TODO: Add more comprehensive validation once the scaffold engine supports it
+
+	def, _, err := scaffold.ResolveScaffold(ctx, entry)
+	if err != nil {
+		return ValidationResult{
+			Valid:    false,
+			Template: templateName,
+			Errors: []ValidationError{
+				{
+					Type:    "resolution_error",
+					Message: fmt.Sprintf("Failed to resolve scaffold: %v", err),
+				},
+			},
+		}
+	}
+
+	if err := scaffold.ValidateScaffoldDefinition(def); err != nil {
+		return ValidationResult{
+			Valid:    false,
+			Template: templateName,
+			Errors: []ValidationError{
+				{
+					Type:    "validation_error",
+					Message: err.Error(),
+				},
+			},
+		}
+	}
+
 	return ValidationResult{
 		Valid:    true,
 		Template: templateName,
@@ -351,8 +320,34 @@ func validateScaffoldFile(ctx context.Context, filePath string) ValidationResult
 			},
 		}
 	}
-	
-	// TODO: Add comprehensive file validation once the scaffold engine supports it
+
+	def, err := scaffold.LoadScaffoldDefinition(ctx, filePath)
+	if err != nil {
+		return ValidationResult{
+			Valid:    false,
+			Template: filePath,
+			Errors: []ValidationError{
+				{
+					Type:    "parse_error",
+					Message: fmt.Sprintf("Failed to parse scaffold: %v", err),
+				},
+			},
+		}
+	}
+
+	if err := scaffold.ValidateScaffoldDefinition(def); err != nil {
+		return ValidationResult{
+			Valid:    false,
+			Template: filePath,
+			Errors: []ValidationError{
+				{
+					Type:    "validation_error",
+					Message: err.Error(),
+				},
+			},
+		}
+	}
+
 	return ValidationResult{
 		Valid:    true,
 		Template: filePath,
@@ -363,7 +358,7 @@ func validateScaffoldFile(ctx context.Context, filePath string) ValidationResult
 func displayValidationText(result ValidationResult, verbose bool) error {
 	if result.Valid {
 		fmt.Printf("✅ Template '%s' is valid\n", result.Template)
-		
+
 		if len(result.Warnings) > 0 {
 			fmt.Println("\n⚠️  Warnings:")
 			for _, warning := range result.Warnings {
@@ -373,9 +368,10 @@ func displayValidationText(result ValidationResult, verbose bool) error {
 	} else {
 		fmt.Printf("❌ Template '%s' validation failed\n", result.Template)
 		fmt.Println("\nErrors:")
-		
+
 		for _, err := range result.Errors {
-			fmt.Printf("   • %s: %s\n", strings.Title(strings.ReplaceAll(err.Type, "_", " ")), err.Message)
+			errType := strings.ReplaceAll(err.Type, "_", " ")
+			fmt.Printf("   • %s: %s\n", strings.Title(errType), err.Message)
 			if err.Field != "" {
 				fmt.Printf("     Field: %s\n", err.Field)
 			}
@@ -386,7 +382,7 @@ func displayValidationText(result ValidationResult, verbose bool) error {
 				fmt.Printf("     💡 %s\n", err.Suggestion)
 			}
 		}
-		
+
 		if len(result.Warnings) > 0 {
 			fmt.Println("\nWarnings:")
 			for _, warning := range result.Warnings {
@@ -394,7 +390,7 @@ func displayValidationText(result ValidationResult, verbose bool) error {
 			}
 		}
 	}
-	
+
 	return nil
 }
 
@@ -410,4 +406,12 @@ func displayValidationYAML(result ValidationResult) error {
 	encoder := yaml.NewEncoder(os.Stdout)
 	defer encoder.Close()
 	return encoder.Encode(result)
+}
+
+// DetectTemplateFromContext detects the appropriate template based on project context.
+// Returns the builtin scaffold name if no specific context is detected.
+func DetectTemplateFromContext(ctx context.Context, outputDir string) string {
+	// For now, just return the builtin scaffold
+	// Future: detect based on existing files (go.mod, package.json, .campaign/, etc.)
+	return scaffold.BuiltinScaffoldName
 }

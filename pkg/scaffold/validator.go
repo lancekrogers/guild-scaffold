@@ -121,14 +121,14 @@ type templateChecker struct {
 // CheckTemplates validates that all referenced templates exist and are valid
 func (tc *templateChecker) CheckTemplates(ctx context.Context, recipe *Recipe) []ValidationError {
 	var errors []ValidationError
-	
+
 	if tc.templateFS == nil {
 		// Cannot validate without filesystem - skip
 		return errors
 	}
-	
+
 	templatesSeen := make(map[string]bool)
-	
+
 	for i, file := range recipe.Files {
 		// Check for context cancellation
 		select {
@@ -141,9 +141,20 @@ func (tc *templateChecker) CheckTemplates(ctx context.Context, recipe *Recipe) [
 			return errors
 		default:
 		}
-		
+
+		// Skip empty templates (e.g., .gitkeep files that have no content)
+		if file.Template == "" {
+			continue
+		}
+
 		templatePath := filepath.Join(recipe.TemplatesDir, file.Template)
-		
+
+		// Check if template path is actually a directory (skip validation for directories)
+		if info, err := fs.Stat(tc.templateFS, templatePath); err == nil && info.IsDir() {
+			// Skip directories - this can happen with tree format conversions
+			continue
+		}
+
 		// Check if template exists
 		if _, err := fs.Stat(tc.templateFS, templatePath); err != nil {
 			errors = append(errors, ValidationError{
@@ -154,17 +165,17 @@ func (tc *templateChecker) CheckTemplates(ctx context.Context, recipe *Recipe) [
 			})
 			continue
 		}
-		
+
 		// Check template syntax if not already checked
 		if !templatesSeen[file.Template] {
 			templatesSeen[file.Template] = true
-			
+
 			if syntaxErrors := tc.validateTemplateSyntax(templatePath, file.Template); len(syntaxErrors) > 0 {
 				errors = append(errors, syntaxErrors...)
 			}
 		}
 	}
-	
+
 	return errors
 }
 
@@ -445,17 +456,100 @@ func (vc *variableChecker) validateVariableValue(value any, field string) []Vali
 	return errors
 }
 
-// getValidationTemplateFuncMap returns the template function map for validation
+// getValidationTemplateFuncMap returns the template function map for validation.
+// This must include ALL functions from the renderer's getTemplateFuncMap() to
+// ensure templates that render successfully also validate successfully.
 func getValidationTemplateFuncMap() template.FuncMap {
 	return template.FuncMap{
-		"lower":   strings.ToLower,
-		"upper":   strings.ToUpper,
-		"title":   strings.Title,
+		// String manipulation
+		"lower":     strings.ToLower,
+		"upper":     strings.ToUpper,
+		"title":     strings.Title,
+		"trimSpace": strings.TrimSpace,
+		"replace":   strings.ReplaceAll,
+		"contains":  strings.Contains,
+		"hasPrefix": strings.HasPrefix,
+		"hasSuffix": strings.HasSuffix,
+		"split":     strings.Split,
+		"join": func(sep string, items []string) string {
+			return strings.Join(items, sep)
+		},
+
+		// Utilities
 		"default": func(defaultVal, val any) any {
 			if val == nil || val == "" {
 				return defaultVal
 			}
 			return val
+		},
+		"empty": func(val any) bool {
+			if val == nil {
+				return true
+			}
+			switch v := val.(type) {
+			case string:
+				return v == ""
+			case []any:
+				return len(v) == 0
+			case map[string]any:
+				return len(v) == 0
+			default:
+				return false
+			}
+		},
+		"not": func(val bool) bool {
+			return !val
+		},
+
+		// Type checking
+		"isString": func(val any) bool {
+			_, ok := val.(string)
+			return ok
+		},
+		"isMap": func(val any) bool {
+			_, ok := val.(map[string]any)
+			return ok
+		},
+		"isList": func(val any) bool {
+			_, ok := val.([]any)
+			return ok
+		},
+
+		// Path manipulation
+		"pathBase":  filepath.Base,
+		"pathDir":   filepath.Dir,
+		"pathExt":   filepath.Ext,
+		"pathJoin":  filepath.Join,
+		"pathClean": filepath.Clean,
+
+		// Date/time functions (stubs for validation)
+		"now": func() string {
+			return ""
+		},
+		"date": func(format string) string {
+			return ""
+		},
+		"dateISO": func() string {
+			return ""
+		},
+
+		// Guild-specific functions
+		"campaignHash": func(name string) string {
+			return ""
+		},
+		"quote": func(s string) string {
+			return `"` + s + `"`
+		},
+		"indent": func(spaces int, text string) string {
+			return text
+		},
+
+		// YAML/JSON functions
+		"toYAML": func(v any) string {
+			return ""
+		},
+		"toJSON": func(v any) string {
+			return "{}"
 		},
 	}
 }
