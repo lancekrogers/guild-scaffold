@@ -1,0 +1,23 @@
+# Development recipes for {{ .vars.project_name }}
+
+# Run linters
+lint:
+    @echo "Running linters for {{ .vars.project_name }}..."
+    go vet ./...
+    golangci-lint run
+
+# Format code
+fmt:
+    @echo "Formatting code..."
+    go fmt ./...
+    gofmt -s -w .
+
+# Run the application in development mode
+dev:
+    @echo "Starting {{ .vars.project_name }} in dev mode..."
+    go run ./cmd/main.go
+
+# Watch for changes and rebuild
+watch:
+    @echo "Watching for changes..."
+    watchexec -e go just build

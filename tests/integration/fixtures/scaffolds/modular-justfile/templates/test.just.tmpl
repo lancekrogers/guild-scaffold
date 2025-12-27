@@ -1,0 +1,17 @@
+# Test recipes for {{ .vars.project_name }}
+
+# Run all tests
+test:
+    @echo "Running tests for {{ .vars.project_name }}..."
+    go test -v ./...
+
+# Run tests with coverage
+test-coverage:
+    @echo "Running tests with coverage..."
+    go test -v -coverprofile=coverage.out ./...
+    go tool cover -html=coverage.out -o coverage.html
+
+# Run tests with race detector
+test-race:
+    @echo "Running tests with race detector..."
+    go test -v -race ./...

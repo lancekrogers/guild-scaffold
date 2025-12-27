@@ -1,0 +1,25 @@
+# Modular Justfile Scaffold
+# Example scaffold for testing external registry entries
+
+name: modular-justfile
+version: "1.0.0"
+description: "Modular justfile system with categorized recipes"
+
+variables:
+  project_name:
+    type: string
+    required: true
+    description: "Name of the project"
+  categories:
+    type: array
+    default: ["build", "test", "dev"]
+    description: "Categories of recipes to include"
+
+templates_dir: templates
+
+tree:
+  justfile: justfile.tmpl
+  ".just/":
+    build.just: build.just.tmpl
+    test.just: test.just.tmpl
+    dev.just: dev.just.tmpl

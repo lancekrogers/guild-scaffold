@@ -1,0 +1,13 @@
+# {{ .vars.project_name }} - Development Commands
+# https://github.com/casey/just
+
+# Import modular recipes
+import '.just/build.just'
+import '.just/test.just'
+import '.just/dev.just'
+
+# Default recipe - show available commands
+default:
+    @echo "{{ .vars.project_name }} - Available Commands"
+    @echo "======================================"
+    @just --list

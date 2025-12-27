@@ -91,12 +91,29 @@ func NewTestContainer(t *testing.T) (*TestContainer, error) {
 
 // buildScaffoldBinary builds the scaffold binary for testing
 func buildScaffoldBinary(t *testing.T) (string, error) {
-	// Always build a Linux binary for container testing
-	tempDir := t.TempDir()
-	binaryPath := filepath.Join(tempDir, "scaffold")
+	// Get the project root directory
+	cwd, err := os.Getwd()
+	if err != nil {
+		return "", fmt.Errorf("failed to get working directory: %w", err)
+	}
+
+	// Navigate to project root (from tests/integration/)
+	projectRoot := filepath.Join(cwd, "../..")
+	projectRoot, err = filepath.Abs(projectRoot)
+	if err != nil {
+		return "", fmt.Errorf("failed to get absolute path: %w", err)
+	}
+
+	// Build to bin/linux directory in project root (accessible to Docker)
+	binDir := filepath.Join(projectRoot, "bin", "linux")
+	if err := os.MkdirAll(binDir, 0755); err != nil {
+		return "", fmt.Errorf("failed to create bin/linux directory: %w", err)
+	}
+
+	binaryPath := filepath.Join(binDir, "scaffold")
 
 	// Build the binary for Linux (required for Alpine containers)
-	cmd := fmt.Sprintf("cd ../../ && GOOS=linux GOARCH=amd64 go build -o %s ./cmd/scaffold", binaryPath)
+	cmd := fmt.Sprintf("cd %s && GOOS=linux GOARCH=amd64 go build -o %s ./cmd/scaffold", projectRoot, binaryPath)
 	if err := runCommand(cmd); err != nil {
 		return "", fmt.Errorf("failed to build binary: %w", err)
 	}
@@ -317,6 +334,36 @@ func ValidateSnapshot(t *testing.T, actual, expected *FileSystemSnapshot) {
 		require.True(t, exists, "missing file: %s", path)
 		require.Equal(t, expectedContent, actualContent, "content mismatch in file: %s", path)
 	}
+}
+
+// CreateRegistryConfig creates a scaffold registry config file in the container
+func (tc *TestContainer) CreateRegistryConfig(configPath string, scaffolds []RegistryEntry) error {
+	content := "scaffolds:\n"
+	for _, s := range scaffolds {
+		content += "  - name: " + s.Name + "\n"
+		content += "    path: " + s.Path + "\n"
+		if s.Description != "" {
+			content += "    description: " + s.Description + "\n"
+		}
+	}
+
+	// Write config to container
+	exitCode, _, err := tc.container.Exec(tc.ctx, []string{
+		"sh", "-c",
+		"mkdir -p $(dirname " + configPath + ") && printf '%s' '" + content + "' > " + configPath,
+	})
+	if err != nil || exitCode != 0 {
+		return fmt.Errorf("failed to create registry config: %w", err)
+	}
+
+	return nil
+}
+
+// RegistryEntry represents a scaffold registry entry
+type RegistryEntry struct {
+	Name        string
+	Path        string
+	Description string
 }
 
 // LoadExpectedSnapshot loads expected output from fixtures
