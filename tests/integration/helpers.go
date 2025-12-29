@@ -503,8 +503,8 @@ func NewSharedContainer() (*TestContainer, error) {
 		return nil, fmt.Errorf("chmod failed with exit code %d, output: %s", exitCode, string(outputBytes))
 	}
 
-	// Create initial working directories
-	exitCode, _, err = container.Exec(ctx, []string{"mkdir", "-p", "/test", "/output"})
+	// Create initial working directories - don't create /output as some tests check it doesn't exist
+	exitCode, _, err = container.Exec(ctx, []string{"mkdir", "-p", "/test"})
 	if err != nil || exitCode != 0 {
 		container.Terminate(ctx)
 		return nil, fmt.Errorf("failed to create initial directories: %w", err)
@@ -551,10 +551,12 @@ func buildScaffoldBinaryShared() (string, error) {
 
 // Reset clears container state between tests.
 // This removes all test artifacts while keeping the container and binary intact.
+// Note: We don't clean /root/.guild as builtins depend on it being absent (not cleaned)
 func (tc *TestContainer) Reset() error {
-	// Remove all test artifacts and recreate clean directories
+	// Remove all test artifacts - don't pre-create /output as some tests check it doesn't exist
+	// Also clean /root/.guild/scaffold.yaml but not the whole directory
 	exitCode, _, err := tc.container.Exec(tc.ctx, []string{
-		"sh", "-c", "rm -rf /test /output /home /tmp/* 2>/dev/null; mkdir -p /test /output",
+		"sh", "-c", "rm -rf /test /output /home /tmp/* /scaffolds /project /root/.guild/scaffold.yaml 2>/dev/null; mkdir -p /test",
 	})
 	if err != nil {
 		return fmt.Errorf("failed to reset container: %w", err)

@@ -43,7 +43,7 @@ func ExecuteInit(ctx context.Context, options *InitOptions) error {
 	if err != nil {
 		return gerror.Wrap(err, gerror.ErrCodeNotFound, "template not found").
 			WithDetails("template", options.TemplateName).
-			WithDetails("suggestion", "use 'scaffold list' to see available templates")
+			WithDetails("suggestion", "run 'scaffold sync' to download templates, or 'scaffold list' to see available templates")
 	}
 
 	// Resolve scaffold to get definition and filesystem

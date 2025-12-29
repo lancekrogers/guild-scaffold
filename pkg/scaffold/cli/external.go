@@ -140,68 +140,26 @@ func IsExternalTemplate(templateName string) bool {
 		strings.HasSuffix(templateName, ".yml")
 }
 
-// ResolveTemplatePath resolves the template path, checking common locations
+// ResolveTemplatePath resolves the template path.
+// Simplified to only check:
+// 1. Absolute paths (used as-is)
+// 2. Relative paths (resolved to absolute)
 func ResolveTemplatePath(templateName string) (string, error) {
 	// If it's already an absolute path, use it
 	if filepath.IsAbs(templateName) {
-		return templateName, nil
+		if _, err := os.Stat(templateName); err == nil {
+			return templateName, nil
+		}
+		return "", gerror.New(gerror.ErrCodeNotFound, "template file not found", nil).
+			WithDetails("path", templateName)
 	}
-	
+
 	// Check relative to current directory
 	if _, err := os.Stat(templateName); err == nil {
 		return filepath.Abs(templateName)
 	}
-	
-	// Check in examples directory relative to current working directory
-	examplesPath := filepath.Join("examples", templateName)
-	if _, err := os.Stat(examplesPath); err == nil {
-		return filepath.Abs(examplesPath)
-	}
-	
-	// Check with .yaml extension if not provided
-	if !strings.HasSuffix(templateName, ".yaml") && !strings.HasSuffix(templateName, ".yml") {
-		yamlPath := templateName + ".yaml"
-		if _, err := os.Stat(yamlPath); err == nil {
-			return filepath.Abs(yamlPath)
-		}
-		
-		examplesYamlPath := filepath.Join("examples", yamlPath)
-		if _, err := os.Stat(examplesYamlPath); err == nil {
-			return filepath.Abs(examplesYamlPath)
-		}
-	}
-	
-	return "", gerror.New(gerror.ErrCodeNotFound, "template file not found", nil).
-		WithDetails("template", templateName)
-}
 
-// ListExternalTemplates lists templates in the examples directory
-func ListExternalTemplates(ctx context.Context) ([]string, error) {
-	var templates []string
-	
-	// Check for examples directory
-	examplesDir := "examples"
-	if info, err := os.Stat(examplesDir); err == nil && info.IsDir() {
-		// Walk the examples directory for YAML files
-		err := filepath.WalkDir(examplesDir, func(path string, d fs.DirEntry, err error) error {
-			if err != nil {
-				return nil // Skip errors
-			}
-			
-			if !d.IsDir() && (strings.HasSuffix(path, ".yaml") || strings.HasSuffix(path, ".yml")) {
-				// Skip files in templates subdirectory
-				if !strings.Contains(path, "/templates/") {
-					templates = append(templates, path)
-				}
-			}
-			
-			return nil
-		})
-		
-		if err != nil {
-			return nil, gerror.Wrap(err, gerror.ErrCodeIO, "failed to list examples")
-		}
-	}
-	
-	return templates, nil
+	return "", gerror.New(gerror.ErrCodeNotFound, "template file not found", nil).
+		WithDetails("template", templateName).
+		WithDetails("suggestion", "use 'scaffold list' to see synced templates")
 }

@@ -5,14 +5,43 @@ package scaffold
 
 import (
 	"context"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"testing"
 )
 
 func TestRegistryLoader_LoadBuiltins(t *testing.T) {
-	loader := NewRegistryLoaderWithPaths("/nonexistent", "/nonexistent")
+	// Create a temp dir structure that mimics the global templates dir
+	tempHome := t.TempDir()
+	configDir := filepath.Join(tempHome, ".config", "guild", "templates")
+	if err := os.MkdirAll(configDir, 0755); err != nil {
+		t.Fatalf("Failed to create config dir: %v", err)
+	}
+
+	// Create a mock scaffold in the templates dir
+	scaffoldDir := filepath.Join(configDir, "test-template")
+	if err := os.MkdirAll(scaffoldDir, 0755); err != nil {
+		t.Fatalf("Failed to create scaffold dir: %v", err)
+	}
+
+	scaffoldYaml := `name: test-template
+version: "1.0"
+tree:
+  README.md: readme.tmpl
+`
+	if err := os.WriteFile(filepath.Join(scaffoldDir, "scaffold.yaml"), []byte(scaffoldYaml), 0644); err != nil {
+		t.Fatalf("Failed to write scaffold.yaml: %v", err)
+	}
+
+	// Set HOME to temp dir for the test
+	originalHome := os.Getenv("HOME")
+	os.Setenv("HOME", tempHome)
+	defer os.Setenv("HOME", originalHome)
+
+	loader, err := NewRegistryLoader()
+	if err != nil {
+		t.Fatalf("Failed to create loader: %v", err)
+	}
 
 	ctx := context.Background()
 	registry, err := loader.Load(ctx)
@@ -20,18 +49,14 @@ func TestRegistryLoader_LoadBuiltins(t *testing.T) {
 		t.Fatalf("Failed to load registry: %v", err)
 	}
 
-	// Should have builtin scaffold
-	entry, ok := registry.Get(BuiltinScaffoldName)
+	// Should have the template from global templates
+	entry, ok := registry.Get("test-template")
 	if !ok {
-		t.Fatal("Expected to find guild-campaign builtin")
+		t.Fatal("Expected to find test-template in registry")
 	}
 
-	if !entry.Builtin {
-		t.Error("Expected entry to be marked as builtin")
-	}
-
-	if entry.Source != "builtin" {
-		t.Errorf("Expected source 'builtin', got '%s'", entry.Source)
+	if entry.Source != "global" {
+		t.Errorf("Expected source 'global', got '%s'", entry.Source)
 	}
 }
 
@@ -45,9 +70,9 @@ func TestRegistryLoader_WithoutBuiltins(t *testing.T) {
 		t.Fatalf("Failed to load registry: %v", err)
 	}
 
-	// Should NOT have builtin scaffold
-	if _, ok := registry.Get(BuiltinScaffoldName); ok {
-		t.Error("Expected no builtin scaffolds when disabled")
+	// Should have no entries when builtins disabled and no templates synced
+	if len(registry.List()) != 0 {
+		t.Errorf("Expected empty registry when builtins disabled, got %d entries", len(registry.List()))
 	}
 }
 
@@ -125,62 +150,45 @@ scaffolds:
 }
 
 func TestGetBuiltinFS(t *testing.T) {
+	// GetBuiltinFS now returns nil when templates aren't synced
+	// (since we no longer embed templates)
 	fsys := GetBuiltinFS()
-	if fsys == nil {
-		t.Fatal("Expected non-nil filesystem")
-	}
 
-	// Check guild-campaign exists
-	entries, err := fs.ReadDir(fsys, "guild-campaign")
-	if err != nil {
-		t.Fatalf("Failed to read guild-campaign dir: %v", err)
-	}
-
-	// Should have scaffold.yaml and templates
-	hasScaffoldYaml := false
-	hasTemplates := false
-	for _, entry := range entries {
-		if entry.Name() == "scaffold.yaml" {
-			hasScaffoldYaml = true
-		}
-		if entry.Name() == "templates" {
-			hasTemplates = true
-		}
-	}
-
-	if !hasScaffoldYaml {
-		t.Error("Expected scaffold.yaml in guild-campaign")
-	}
-	if !hasTemplates {
-		t.Error("Expected templates dir in guild-campaign")
+	// Will be nil if ~/.config/guild/templates doesn't exist
+	// This is expected behavior - templates need to be synced
+	if fsys != nil {
+		t.Log("Templates directory exists, filesystem returned")
+	} else {
+		t.Log("No templates synced, nil filesystem returned (expected)")
 	}
 }
 
-func TestResolveScaffold_Builtin(t *testing.T) {
-	entry := ScaffoldEntry{
-		Name:    BuiltinScaffoldName,
-		Builtin: true,
-		Source:  "builtin",
+func TestGetGlobalTemplatesFS(t *testing.T) {
+	// Create temp home with templates
+	tempHome := t.TempDir()
+	templatesDir := filepath.Join(tempHome, ".config", "guild", "templates")
+	if err := os.MkdirAll(templatesDir, 0755); err != nil {
+		t.Fatalf("Failed to create templates dir: %v", err)
 	}
 
-	ctx := context.Background()
-	def, fsys, err := ResolveScaffold(ctx, entry)
-	if err != nil {
-		t.Fatalf("Failed to resolve builtin scaffold: %v", err)
+	// Create a template
+	scaffoldDir := filepath.Join(templatesDir, "test-scaffold")
+	if err := os.MkdirAll(scaffoldDir, 0755); err != nil {
+		t.Fatalf("Failed to create scaffold dir: %v", err)
 	}
 
-	if def.Name != BuiltinScaffoldName {
-		t.Errorf("Expected name '%s', got '%s'", BuiltinScaffoldName, def.Name)
+	if err := os.WriteFile(filepath.Join(scaffoldDir, "scaffold.yaml"), []byte("name: test"), 0644); err != nil {
+		t.Fatalf("Failed to write file: %v", err)
 	}
 
+	// Set HOME
+	originalHome := os.Getenv("HOME")
+	os.Setenv("HOME", tempHome)
+	defer os.Setenv("HOME", originalHome)
+
+	fsys := GetGlobalTemplatesFS()
 	if fsys == nil {
-		t.Error("Expected non-nil filesystem")
-	}
-
-	// Check we can read templates from the filesystem
-	_, err = fs.ReadDir(fsys, "templates")
-	if err != nil {
-		t.Errorf("Failed to read templates dir: %v", err)
+		t.Fatal("Expected non-nil filesystem when templates exist")
 	}
 }
 
@@ -219,23 +227,118 @@ tree:
 	}
 }
 
-func TestFindScaffold(t *testing.T) {
-	loader := NewRegistryLoaderWithPaths("/nonexistent", "/nonexistent")
+func TestFindScaffold_NotFound(t *testing.T) {
+	loader := NewRegistryLoaderWithPaths("/nonexistent", "/nonexistent").WithBuiltins(false)
 
 	ctx := context.Background()
 
-	// Should find builtin
-	entry, err := loader.FindScaffold(ctx, BuiltinScaffoldName)
-	if err != nil {
-		t.Fatalf("Failed to find builtin scaffold: %v", err)
-	}
-	if entry.Name != BuiltinScaffoldName {
-		t.Errorf("Expected name '%s', got '%s'", BuiltinScaffoldName, entry.Name)
-	}
-
 	// Should not find nonexistent
-	_, err = loader.FindScaffold(ctx, "nonexistent-scaffold")
+	_, err := loader.FindScaffold(ctx, "nonexistent-scaffold")
 	if err == nil {
 		t.Error("Expected error for nonexistent scaffold")
+	}
+}
+
+func TestLoadWorkspaceTemplates(t *testing.T) {
+	// Create temp workspace with templates
+	workspaceDir := t.TempDir()
+	templatesDir := filepath.Join(workspaceDir, ".campaign", "templates")
+	if err := os.MkdirAll(templatesDir, 0755); err != nil {
+		t.Fatalf("Failed to create templates dir: %v", err)
+	}
+
+	// Create a workspace template
+	scaffoldDir := filepath.Join(templatesDir, "my-scaffold")
+	if err := os.MkdirAll(scaffoldDir, 0755); err != nil {
+		t.Fatalf("Failed to create scaffold dir: %v", err)
+	}
+
+	scaffoldYaml := `name: my-scaffold
+version: "1.0"
+tree:
+  README.md: readme.tmpl
+`
+	if err := os.WriteFile(filepath.Join(scaffoldDir, "scaffold.yaml"), []byte(scaffoldYaml), 0644); err != nil {
+		t.Fatalf("Failed to write scaffold.yaml: %v", err)
+	}
+
+	// Use a temp home to avoid picking up real templates
+	tempHome := t.TempDir()
+	originalHome := os.Getenv("HOME")
+	os.Setenv("HOME", tempHome)
+	defer os.Setenv("HOME", originalHome)
+
+	loader := NewRegistryLoaderWithPaths(workspaceDir, tempHome).WithBuiltins(false)
+
+	ctx := context.Background()
+	registry, err := loader.Load(ctx)
+	if err != nil {
+		t.Fatalf("Failed to load registry: %v", err)
+	}
+
+	// Should find the workspace template
+	entry, ok := registry.Get("my-scaffold")
+	if !ok {
+		t.Fatal("Expected to find my-scaffold in registry")
+	}
+
+	if entry.Source != "workspace" {
+		t.Errorf("Expected source 'workspace', got '%s'", entry.Source)
+	}
+}
+
+func TestWorkspaceTakesPrecedenceOverGlobal(t *testing.T) {
+	// Create temp home with global templates
+	tempHome := t.TempDir()
+	globalTemplatesDir := filepath.Join(tempHome, ".config", "guild", "templates")
+	if err := os.MkdirAll(globalTemplatesDir, 0755); err != nil {
+		t.Fatalf("Failed to create global templates dir: %v", err)
+	}
+
+	// Create global template
+	globalScaffoldDir := filepath.Join(globalTemplatesDir, "shared-scaffold")
+	if err := os.MkdirAll(globalScaffoldDir, 0755); err != nil {
+		t.Fatalf("Failed to create global scaffold dir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(globalScaffoldDir, "scaffold.yaml"), []byte("name: shared-scaffold\ndescription: global version"), 0644); err != nil {
+		t.Fatalf("Failed to write global scaffold.yaml: %v", err)
+	}
+
+	// Create workspace with same template name
+	workspaceDir := t.TempDir()
+	workspaceTemplatesDir := filepath.Join(workspaceDir, ".campaign", "templates")
+	if err := os.MkdirAll(workspaceTemplatesDir, 0755); err != nil {
+		t.Fatalf("Failed to create workspace templates dir: %v", err)
+	}
+
+	workspaceScaffoldDir := filepath.Join(workspaceTemplatesDir, "shared-scaffold")
+	if err := os.MkdirAll(workspaceScaffoldDir, 0755); err != nil {
+		t.Fatalf("Failed to create workspace scaffold dir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(workspaceScaffoldDir, "scaffold.yaml"), []byte("name: shared-scaffold\ndescription: workspace version"), 0644); err != nil {
+		t.Fatalf("Failed to write workspace scaffold.yaml: %v", err)
+	}
+
+	// Set HOME
+	originalHome := os.Getenv("HOME")
+	os.Setenv("HOME", tempHome)
+	defer os.Setenv("HOME", originalHome)
+
+	loader := NewRegistryLoaderWithPaths(workspaceDir, tempHome)
+
+	ctx := context.Background()
+	registry, err := loader.Load(ctx)
+	if err != nil {
+		t.Fatalf("Failed to load registry: %v", err)
+	}
+
+	// Should find the scaffold with workspace source (workspace takes precedence)
+	entry, ok := registry.Get("shared-scaffold")
+	if !ok {
+		t.Fatal("Expected to find shared-scaffold in registry")
+	}
+
+	if entry.Source != "workspace" {
+		t.Errorf("Expected source 'workspace' to take precedence, got '%s'", entry.Source)
 	}
 }

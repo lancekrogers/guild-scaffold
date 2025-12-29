@@ -167,9 +167,11 @@ func displayTemplatesTable(templates []TemplateInfo, verbose bool) error {
 	if len(templates) == 0 {
 		fmt.Println("No templates found.")
 		fmt.Println()
-		fmt.Println("💡 To add templates, create a registry file:")
-		fmt.Println("   ~/.guild/scaffold.yaml (global)")
-		fmt.Println("   .campaign/scaffold.yaml (project)")
+		fmt.Println("💡 To get started, sync templates from GitHub:")
+		fmt.Println("   scaffold sync")
+		fmt.Println()
+		fmt.Println("Or create workspace templates in:")
+		fmt.Println("   .campaign/templates/")
 		return nil
 	}
 
@@ -177,48 +179,53 @@ func displayTemplatesTable(templates []TemplateInfo, verbose bool) error {
 	fmt.Println()
 
 	for _, tmpl := range templates {
-		// Choose icon based on source
-		icon := "📁"
-		if tmpl.Builtin {
-			icon = "⚡"
-		} else if tmpl.Source == "global" {
-			icon = "🌐"
-		} else if tmpl.Source == "project" {
-			icon = "📂"
+		// Format source indicator
+		var sourceTag string
+		switch tmpl.Source {
+		case "workspace":
+			sourceTag = "[workspace]"
+		case "global":
+			sourceTag = "[global]"
+		default:
+			sourceTag = fmt.Sprintf("[%s]", tmpl.Source)
 		}
 
-		fmt.Printf("%s %s\n", icon, tmpl.Name)
+		fmt.Printf("  %s %s\n", tmpl.Name, sourceTag)
 		if tmpl.Description != "" {
-			fmt.Printf("   %s\n", tmpl.Description)
+			fmt.Printf("    %s\n", tmpl.Description)
 		}
-		if tmpl.Category != "" {
-			fmt.Printf("   Category: %s\n", tmpl.Category)
-		}
-		fmt.Printf("   Source: %s\n", tmpl.Source)
 
-		if verbose && len(tmpl.Variables) > 0 {
-			fmt.Println("   Variables:")
-			for _, variable := range tmpl.Variables {
-				required := ""
-				if variable.Required {
-					required = " (required)"
-				}
-				defaultStr := ""
-				if variable.Default != nil {
-					defaultStr = fmt.Sprintf(" [default: %v]", variable.Default)
-				}
-				fmt.Printf("     • %s (%s)%s%s\n",
-					variable.Name, variable.Type, required, defaultStr)
-				if variable.Description != "" {
-					fmt.Printf("       %s\n", variable.Description)
+		if verbose {
+			if tmpl.Category != "" {
+				fmt.Printf("    Category: %s\n", tmpl.Category)
+			}
+			if len(tmpl.Variables) > 0 {
+				fmt.Println("    Variables:")
+				for _, variable := range tmpl.Variables {
+					required := ""
+					if variable.Required {
+						required = " (required)"
+					}
+					defaultStr := ""
+					if variable.Default != nil {
+						defaultStr = fmt.Sprintf(" [default: %v]", variable.Default)
+					}
+					fmt.Printf("      • %s (%s)%s%s\n",
+						variable.Name, variable.Type, required, defaultStr)
+					if variable.Description != "" {
+						fmt.Printf("        %s\n", variable.Description)
+					}
 				}
 			}
 		}
 		fmt.Println()
 	}
 
-	fmt.Println("💡 Use --template <name> to select a specific template")
-	fmt.Println("💡 Use --verbose for variable details")
+	fmt.Println("💡 Use 'scaffold init --template <name>' to create a project")
+	if !verbose {
+		fmt.Println("💡 Use --verbose for variable details")
+	}
+	fmt.Println("💡 Use 'scaffold sync' to download/update templates")
 
 	return nil
 }

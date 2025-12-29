@@ -5,16 +5,13 @@ package scaffold
 
 import (
 	"context"
-	"embed"
 	"io/fs"
 	"os"
 	"path/filepath"
 
 	"github.com/guild-framework/guild-core/pkg/gerror"
+	"github.com/guild-framework/guild-scaffold/pkg/scaffold/config"
 )
-
-//go:embed builtin/*
-var builtinFS embed.FS
 
 // RegistryLoader loads and merges scaffold registries from multiple sources.
 type RegistryLoader struct {
@@ -25,7 +22,11 @@ type RegistryLoader struct {
 	homeDir string
 
 	// includeBuiltins controls whether builtin scaffolds are included
+	// (now loads from config directory instead of embedded)
 	includeBuiltins bool
+
+	// paths is the path resolver for template locations
+	paths *config.PathResolver
 }
 
 // NewRegistryLoader creates a new registry loader with default settings.
@@ -40,19 +41,28 @@ func NewRegistryLoader() (*RegistryLoader, error) {
 		return nil, gerror.Wrap(err, gerror.ErrCodeIO, "failed to get working directory")
 	}
 
+	paths, err := config.NewPathResolver()
+	if err != nil {
+		return nil, gerror.Wrap(err, gerror.ErrCodeInternal, "failed to create path resolver")
+	}
+
 	return &RegistryLoader{
 		workDir:         wd,
 		homeDir:         home,
 		includeBuiltins: true,
+		paths:           paths,
 	}, nil
 }
 
 // NewRegistryLoaderWithPaths creates a registry loader with explicit paths.
 func NewRegistryLoaderWithPaths(workDir, homeDir string) *RegistryLoader {
+	// Create a path resolver with the explicit paths for testing
+	paths := config.NewPathResolverWithPaths(homeDir, workDir, "")
 	return &RegistryLoader{
 		workDir:         workDir,
 		homeDir:         homeDir,
 		includeBuiltins: true,
+		paths:           paths,
 	}
 }
 
@@ -64,9 +74,9 @@ func (l *RegistryLoader) WithBuiltins(include bool) *RegistryLoader {
 
 // Load loads and merges all scaffold registries.
 // Precedence (highest to lowest):
-// 1. Project registry (.campaign/scaffold.yaml)
-// 2. Global registry (~/.guild/scaffold.yaml)
-// 3. Builtin scaffolds (guild-campaign)
+// 1. Workspace templates (.campaign/templates/)
+// 2. Global templates (~/.config/guild/templates/)
+// 3. Legacy registries (for backwards compatibility)
 func (l *RegistryLoader) Load(ctx context.Context) (*Registry, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, gerror.Wrap(err, gerror.ErrCodeCancelled, "context cancelled")
@@ -74,95 +84,153 @@ func (l *RegistryLoader) Load(ctx context.Context) (*Registry, error) {
 
 	registry := NewRegistry()
 
-	// 1. Load builtins first (lowest precedence)
+	// 1. Load global templates (lowest precedence)
 	if l.includeBuiltins {
 		builtins := l.loadBuiltins()
 		registry.Merge(builtins)
 	}
 
-	// 2. Load global registry
+	// 2. Load workspace templates (higher precedence)
+	workspace := l.loadWorkspaceTemplates()
+	registry.Merge(workspace)
+
+	// 3. Legacy: Load global registry file (~/.guild/scaffold.yaml)
+	// This is kept for backwards compatibility with existing configurations
 	globalPath := filepath.Join(l.homeDir, ".guild", "scaffold.yaml")
 	global, err := LoadRegistryFromFile(ctx, globalPath)
-	if err != nil {
-		// Log warning but continue
-		// TODO: add logging
-	} else {
+	if err == nil {
 		registry.Merge(global)
 	}
 
-	// 3. Load project registry (highest precedence)
+	// 4. Legacy: Load project registry (.campaign/scaffold.yaml)
+	// This is kept for backwards compatibility
 	projectPath := filepath.Join(l.workDir, ".campaign", "scaffold.yaml")
 	project, err := LoadRegistryFromFile(ctx, projectPath)
-	if err != nil {
-		// Log warning but continue
-	} else {
+	if err == nil {
 		registry.Merge(project)
 	}
 
 	return registry, nil
 }
 
-// loadBuiltins returns the registry of builtin scaffolds.
-func (l *RegistryLoader) loadBuiltins() *Registry {
+// loadWorkspaceTemplates scans the workspace templates directory.
+func (l *RegistryLoader) loadWorkspaceTemplates() *Registry {
 	registry := NewRegistry()
 
-	// Add guild-campaign builtin
-	registry.Add(ScaffoldEntry{
-		Name:        BuiltinScaffoldName,
-		Description: "Complete campaign workspace with guild configuration",
-		Category:    "workspace",
-		Source:      "builtin",
-		Builtin:     true,
-	})
+	if l.paths == nil {
+		return registry
+	}
+
+	templatesDir := l.paths.WorkspaceTemplatesDir()
+
+	// Check if templates directory exists
+	info, err := os.Stat(templatesDir)
+	if err != nil || !info.IsDir() {
+		return registry
+	}
+
+	// Scan for scaffold directories
+	entries, err := os.ReadDir(templatesDir)
+	if err != nil {
+		return registry
+	}
+
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+
+		scaffoldPath := filepath.Join(templatesDir, entry.Name(), "scaffold.yaml")
+		if _, err := os.Stat(scaffoldPath); err != nil {
+			continue
+		}
+
+		registry.Add(ScaffoldEntry{
+			Name:   entry.Name(),
+			Path:   filepath.Join(templatesDir, entry.Name()),
+			Source: "workspace",
+		})
+	}
 
 	return registry
 }
 
-// GetBuiltinFS returns the embedded filesystem containing builtin scaffolds.
-func GetBuiltinFS() fs.FS {
-	sub, err := fs.Sub(builtinFS, "builtin")
-	if err != nil {
-		// This should never happen with valid embed
-		return builtinFS
+// loadBuiltins scans the global templates directory and returns discovered scaffolds.
+// This replaces the previous embedded templates pattern.
+func (l *RegistryLoader) loadBuiltins() *Registry {
+	registry := NewRegistry()
+
+	if l.paths == nil {
+		return registry
 	}
-	return sub
+
+	templatesDir := l.paths.GlobalTemplatesDir()
+
+	// Check if templates directory exists
+	info, err := os.Stat(templatesDir)
+	if err != nil || !info.IsDir() {
+		// No global templates synced yet - that's fine
+		return registry
+	}
+
+	// Scan for scaffold directories (each should have a scaffold.yaml)
+	entries, err := os.ReadDir(templatesDir)
+	if err != nil {
+		return registry
+	}
+
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+
+		scaffoldPath := filepath.Join(templatesDir, entry.Name(), "scaffold.yaml")
+		if _, err := os.Stat(scaffoldPath); err != nil {
+			continue // Skip directories without scaffold.yaml
+		}
+
+		registry.Add(ScaffoldEntry{
+			Name:    entry.Name(),
+			Path:    filepath.Join(templatesDir, entry.Name()),
+			Source:  "global",
+			Builtin: false, // No longer embedded
+		})
+	}
+
+	return registry
+}
+
+// GetGlobalTemplatesFS returns the global templates directory as an fs.FS.
+// Returns nil if the directory doesn't exist (templates not synced).
+func GetGlobalTemplatesFS() fs.FS {
+	paths, err := config.NewPathResolver()
+	if err != nil {
+		return nil
+	}
+
+	templatesDir := paths.GlobalTemplatesDir()
+	if _, err := os.Stat(templatesDir); err != nil {
+		return nil
+	}
+
+	return os.DirFS(templatesDir)
+}
+
+// GetBuiltinFS returns the global templates filesystem.
+// Deprecated: Use GetGlobalTemplatesFS instead.
+func GetBuiltinFS() fs.FS {
+	return GetGlobalTemplatesFS()
 }
 
 // ResolveScaffold resolves a scaffold entry to its definition and filesystem.
-// For builtin scaffolds, returns the embedded filesystem.
-// For external scaffolds, returns an OS-based filesystem.
+// All scaffolds are now filesystem-based (loaded from config directory).
 func ResolveScaffold(ctx context.Context, entry ScaffoldEntry) (*ScaffoldDefinition, fs.FS, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, nil, gerror.Wrap(err, gerror.ErrCodeCancelled, "context cancelled")
 	}
 
-	if entry.Builtin {
-		return resolveBuiltinScaffold(ctx, entry)
-	}
-
+	// All scaffolds are now external (filesystem-based)
 	return resolveExternalScaffold(ctx, entry)
-}
-
-// resolveBuiltinScaffold resolves a builtin scaffold.
-func resolveBuiltinScaffold(ctx context.Context, entry ScaffoldEntry) (*ScaffoldDefinition, fs.FS, error) {
-	builtinFSys := GetBuiltinFS()
-
-	// Load definition from builtin filesystem
-	scaffoldPath := filepath.Join(entry.Name, "scaffold.yaml")
-	def, err := LoadScaffoldDefinitionFromFS(ctx, builtinFSys, scaffoldPath)
-	if err != nil {
-		return nil, nil, gerror.Wrap(err, gerror.ErrCodeNotFound, "builtin scaffold not found").
-			WithDetails("name", entry.Name)
-	}
-
-	// Return a sub-filesystem for this scaffold
-	subFS, err := fs.Sub(builtinFSys, entry.Name)
-	if err != nil {
-		return nil, nil, gerror.Wrap(err, gerror.ErrCodeIO, "failed to access builtin scaffold").
-			WithDetails("name", entry.Name)
-	}
-
-	return def, subFS, nil
 }
 
 // resolveExternalScaffold resolves an external (filesystem-based) scaffold.
