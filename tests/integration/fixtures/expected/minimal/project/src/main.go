@@ -3,5 +3,5 @@ package main
 import "fmt"
 
 func main() {
-    fmt.Println("Welcome to MyTestProject!")
+    fmt.Println("Welcome to TestProject!")
 }

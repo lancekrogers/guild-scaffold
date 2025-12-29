@@ -18,10 +18,7 @@ func TestContainerEnvironment(t *testing.T) {
 		t.Skip("Skipping integration test in short mode")
 	}
 
-	// Create test container
-	container, err := NewTestContainer(t)
-	require.NoError(t, err)
-	defer container.Cleanup()
+	container := GetSharedContainer(t)
 
 	// Test that we can execute commands in the container
 	output, err := container.RunScaffold("--help")
@@ -45,10 +42,7 @@ func TestMinimalScaffoldInContainer(t *testing.T) {
 		t.Skip("Skipping integration test in short mode")
 	}
 
-	// Create test container
-	container, err := NewTestContainer(t)
-	require.NoError(t, err)
-	defer container.Cleanup()
+	container := GetSharedContainer(t)
 
 	// Copy minimal fixture to container
 	err = container.CopyToContainer("fixtures/minimal.yaml", "/test/minimal.yaml")

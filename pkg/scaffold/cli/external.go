@@ -5,6 +5,7 @@ package cli
 
 import (
 	"context"
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -102,8 +103,15 @@ func LoadExternalTemplate(ctx context.Context, templatePath string, options *Ini
 	// Validate the recipe (optional - could be skipped for external templates)
 	// Validation will check if templates exist and are valid
 	if validationErrors := engine.ValidateRecipe(ctx, recipe); len(validationErrors) > 0 {
-		// For now, we'll still return the error but could make this configurable
-		return gerror.New(gerror.ErrCodeValidation, "recipe validation failed", nil).
+		// Format first error message for visibility
+		msg := "recipe validation failed"
+		if len(validationErrors) > 0 {
+			msg = validationErrors[0].Message
+			if len(validationErrors) > 1 {
+				msg += fmt.Sprintf(" (and %d more errors)", len(validationErrors)-1)
+			}
+		}
+		return gerror.New(gerror.ErrCodeValidation, msg, nil).
 			WithDetails("errors", validationErrors)
 	}
 	

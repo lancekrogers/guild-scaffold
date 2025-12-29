@@ -6,7 +6,7 @@ int_value: {{ .vars.int_var }}
 bool_value: {{ .vars.bool_var }}
 
 list_items:
-{{- range $item := split "," .vars.list_var }}
+{{- range $item := split ";" .vars.list_var }}
   - {{ $item }}
 {{- end }}
 

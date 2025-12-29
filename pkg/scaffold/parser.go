@@ -135,7 +135,15 @@ func (p *yamlParser) parseWithTimeout(ctx context.Context, data []byte, filename
 		// Validate if enabled
 		if p.options.ValidateSemantics {
 			if validationErrors := p.ValidateRecipe(parseCtx, result.recipe); len(validationErrors) > 0 {
-				return nil, gerror.New(ErrCodeValidation, "recipe validation failed", nil).
+				// Format first error message for visibility
+				msg := "recipe validation failed"
+				if len(validationErrors) > 0 {
+					msg = validationErrors[0].Message
+					if len(validationErrors) > 1 {
+						msg += fmt.Sprintf(" (and %d more errors)", len(validationErrors)-1)
+					}
+				}
+				return nil, gerror.New(ErrCodeValidation, msg, nil).
 					WithDetails("errors", validationErrors)
 			}
 		}

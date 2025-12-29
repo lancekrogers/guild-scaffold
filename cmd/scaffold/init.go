@@ -114,10 +114,14 @@ func createCLIOptions(ctx context.Context, projectName string) (*cli.InitOptions
 	if err != nil {
 		return nil, gerror.Wrap(err, gerror.ErrCodeInvalidInput, "failed to parse variables")
 	}
-	
-	// Add project name to variables
-	variables["project_name"] = projectName
-	variables["campaign_name"] = projectName
+
+	// Add project name to variables (only if not already provided via --var)
+	if _, ok := variables["project_name"]; !ok {
+		variables["project_name"] = projectName
+	}
+	if _, ok := variables["campaign_name"]; !ok {
+		variables["campaign_name"] = projectName
+	}
 	
 	// Determine template to use
 	templateName := initFlags.Template

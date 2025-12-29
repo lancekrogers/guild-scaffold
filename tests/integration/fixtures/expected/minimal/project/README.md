@@ -1,4 +1,4 @@
-# MyTestProject
+# TestProject
 
 A Go project generated with guild-scaffold.
 
@@ -11,4 +11,4 @@ go run src/main.go
 
 ## Module
 
-`github.com/test/myproject`
+`github.com/test/project`

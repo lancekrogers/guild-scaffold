@@ -2,6 +2,7 @@ package scaffold
 
 import (
 	"context"
+	"fmt"
 	"io/fs"
 	"time"
 
@@ -63,23 +64,33 @@ func (se *ScaffoldEngine) LoadRecipeFS(ctx context.Context, fsys fs.FS, path str
 func (se *ScaffoldEngine) RenderFS(ctx context.Context, recipe *Recipe, options Options) (*ScaffoldStats, error) {
 	// Validate recipe first
 	if validationErrors := se.ValidateRecipe(ctx, recipe); len(validationErrors) > 0 {
-		return nil, gerror.New(ErrCodeValidation, "recipe validation failed", nil).
+		// Format first error message for visibility
+		msg := "recipe validation failed"
+		if len(validationErrors) > 0 {
+			msg = validationErrors[0].Message
+			if len(validationErrors) > 1 {
+				msg += fmt.Sprintf(" (and %d more errors)", len(validationErrors)-1)
+			}
+		}
+		return nil, gerror.New(ErrCodeValidation, msg, nil).
 			WithDetails("errors", validationErrors)
 	}
-	
-	// Ensure destination directory exists
+
+	// Ensure destination directory exists (skip in dry run mode)
 	// Note: if fileSystem is OSFileSystem with basePath set to options.Dest,
 	// we should create the root directory (".")
-	if err := se.fileSystem.MkdirAll(".", 0755); err != nil {
-		return nil, gerror.Wrap(err, gerror.ErrCodeIO, "failed to create destination directory").
-			WithDetails("dest", options.Dest)
+	if !options.Dry {
+		if err := se.fileSystem.MkdirAll(".", 0755); err != nil {
+			return nil, gerror.Wrap(err, gerror.ErrCodeIO, "failed to create destination directory").
+				WithDetails("dest", options.Dest)
+		}
 	}
-	
+
 	// Set template filesystem
 	if options.TemplatesFS != nil {
 		se.renderer.SetTemplateFS(options.TemplatesFS)
 	}
-	
+
 	// Render all files
 	return se.renderer.RenderRecipe(ctx, recipe, options)
 }

@@ -143,6 +143,15 @@ func (tr *templateRenderer) RenderRecipe(ctx context.Context, recipe *Recipe, op
 
 		// Write file (or skip in dry run)
 		if !options.Dry {
+			// Remove existing file if overwrite is enabled
+			if options.Overwrite && tr.fileExists(file.Path) {
+				if err := tr.fileSystem.Remove(file.Path); err != nil {
+					stats.FilesFailed++
+					return stats, gerror.Wrap(err, gerror.ErrCodeIO, "failed to remove existing file for overwrite").
+						WithDetails("filePath", file.Path)
+				}
+			}
+
 			// Use relative path since fileSystem has basePath configured
 			if err := tr.writeFile(ctx, file.Path, content); err != nil {
 				stats.FilesFailed++

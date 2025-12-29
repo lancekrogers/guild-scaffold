@@ -1,3 +1,3 @@
-module github.com/test/myproject
+module github.com/test/project
 
 go 1.21
