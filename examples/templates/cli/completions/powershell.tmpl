@@ -1,0 +1,35 @@
+# PowerShell completion for {{.vars.name}}
+
+Register-ArgumentCompleter -Native -CommandName {{.vars.name}} -ScriptBlock {
+    param($wordToComplete, $commandAst, $cursorPosition)
+
+    $commands = @{
+        'init' = 'Initialize a new project'
+        'run' = 'Run a target'
+        'list' = 'List available targets'
+        'config' = 'Manage configuration'
+        'version' = 'Print version information'
+        'help' = 'Help about any command'
+    }
+
+    $flags = @{
+        '--help' = 'Show help'
+        '--verbose' = 'Enable verbose output'
+        '--config' = 'Config file'
+        '--output' = 'Output format'
+    }
+
+    $elements = $commandAst.CommandElements
+    $command = $elements[1].Value
+
+    if ($elements.Count -eq 2) {
+        $commands.Keys | Where-Object { $_ -like "$wordToComplete*" } | ForEach-Object {
+            [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $commands[$_])
+        }
+    }
+    elseif ($wordToComplete -like '-*') {
+        $flags.Keys | Where-Object { $_ -like "$wordToComplete*" } | ForEach-Object {
+            [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterName', $flags[$_])
+        }
+    }
+}

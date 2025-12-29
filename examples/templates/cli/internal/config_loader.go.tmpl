@@ -1,0 +1,32 @@
+package internal
+
+import (
+	"os"
+
+	"gopkg.in/yaml.v3"
+)
+
+// LoadConfig loads configuration from a file.
+func LoadConfig(path string) (*Config, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+
+	cfg := DefaultConfig()
+	if err := yaml.Unmarshal(data, cfg); err != nil {
+		return nil, err
+	}
+
+	return cfg, nil
+}
+
+// SaveConfig saves configuration to a file.
+func SaveConfig(path string, cfg *Config) error {
+	data, err := yaml.Marshal(cfg)
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile(path, data, 0644)
+}

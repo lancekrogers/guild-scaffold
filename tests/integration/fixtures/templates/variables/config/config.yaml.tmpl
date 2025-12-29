@@ -1,0 +1,17 @@
+# Configuration for {{ .vars.project_name }}
+# Generated configuration file
+
+string_value: {{ .vars.string_var }}
+int_value: {{ .vars.int_var }}
+bool_value: {{ .vars.bool_var }}
+
+list_items:
+{{- range $item := split "," .vars.list_var }}
+  - {{ $item }}
+{{- end }}
+
+special: {{ .vars.special_chars }}
+
+metadata:
+  author: {{ .vars.author | default "Unknown" }}
+  version: {{ .vars.version | default "1.0.0" }}

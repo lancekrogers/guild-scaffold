@@ -1,0 +1,36 @@
+// Example advanced demonstrates advanced usage of {{.vars.name}}.
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+	"time"
+
+	"{{.vars.module}}"
+)
+
+func main() {
+	// Create client with custom options
+	client, err := {{.vars.name}}.New(
+		{{.vars.name}}.WithTimeout(60),
+	)
+	if err != nil {
+		log.Fatalf("Failed to create client: %v", err)
+	}
+	defer client.Close()
+
+	// Create a context with timeout
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	// Process with context (if supported)
+	_ = ctx // Use context with context-aware methods
+
+	result, err := client.Process("advanced input")
+	if err != nil {
+		log.Fatalf("Failed to process: %v", err)
+	}
+
+	fmt.Println("Result:", result)
+}

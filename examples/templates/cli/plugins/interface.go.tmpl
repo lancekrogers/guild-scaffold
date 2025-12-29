@@ -1,0 +1,24 @@
+package plugins
+
+// Plugin defines the plugin interface.
+type Plugin interface {
+	// Name returns the plugin name.
+	Name() string
+
+	// Version returns the plugin version.
+	Version() string
+
+	// Description returns a brief description.
+	Description() string
+
+	// Execute runs the plugin with given arguments.
+	Execute(args []string) error
+}
+
+// PluginInfo contains plugin metadata.
+type PluginInfo struct {
+	Name        string
+	Version     string
+	Description string
+	Author      string
+}

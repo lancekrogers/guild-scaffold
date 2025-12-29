@@ -1,0 +1,26 @@
+// Example basic demonstrates simple usage of {{.vars.name}}.
+package main
+
+import (
+	"fmt"
+	"log"
+
+	"{{.vars.module}}"
+)
+
+func main() {
+	// Create a new client with default options
+	client, err := {{.vars.name}}.New()
+	if err != nil {
+		log.Fatalf("Failed to create client: %v", err)
+	}
+	defer client.Close()
+
+	// Process some input
+	result, err := client.Process("hello world")
+	if err != nil {
+		log.Fatalf("Failed to process: %v", err)
+	}
+
+	fmt.Println("Result:", result)
+}

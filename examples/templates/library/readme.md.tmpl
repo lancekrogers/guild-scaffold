@@ -1,0 +1,46 @@
+# {{.vars.name}}
+
+{{.vars.description | default "A reusable Go library."}}
+
+## Installation
+
+```bash
+go get {{.vars.module}}
+```
+
+## Usage
+
+```go
+import "{{.vars.module}}"
+
+func main() {
+    client, err := {{.vars.name}}.New()
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer client.Close()
+
+    result, err := client.Process("input")
+    if err != nil {
+        log.Fatal(err)
+    }
+    fmt.Println(result)
+}
+```
+
+## Documentation
+
+See the [API documentation](docs/API.md) for detailed usage.
+
+## Examples
+
+- [Basic usage](examples/basic/)
+- [Advanced usage](examples/advanced/)
+
+## Contributing
+
+See [CONTRIBUTING.md](docs/CONTRIBUTING.md) for guidelines.
+
+## License
+
+{{.vars.license | default "MIT"}} License - see [LICENSE](LICENSE) for details.

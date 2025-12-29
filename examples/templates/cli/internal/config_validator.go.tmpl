@@ -1,0 +1,23 @@
+package internal
+
+import (
+	"errors"
+)
+
+// ValidateConfig validates the configuration.
+func ValidateConfig(cfg *Config) error {
+	if cfg == nil {
+		return errors.New("config is nil")
+	}
+
+	if cfg.Timeout < 0 {
+		return errors.New("timeout must be non-negative")
+	}
+
+	validOutputs := map[string]bool{"json": true, "table": true, "yaml": true}
+	if cfg.Output != "" && !validOutputs[cfg.Output] {
+		return errors.New("invalid output format")
+	}
+
+	return nil
+}

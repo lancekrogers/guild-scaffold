@@ -1,0 +1,33 @@
+# bash completion for {{.vars.name}}
+
+_{{.vars.name}}_completions() {
+    local cur prev commands
+    COMPREPLY=()
+    cur="${COMP_WORDS[COMP_CWORD]}"
+    prev="${COMP_WORDS[COMP_CWORD-1]}"
+    commands="init run list config version help"
+
+    case "${prev}" in
+        {{.vars.name}})
+            COMPREPLY=( $(compgen -W "${commands}" -- ${cur}) )
+            return 0
+            ;;
+        config)
+            COMPREPLY=( $(compgen -W "show set" -- ${cur}) )
+            return 0
+            ;;
+        run)
+            COMPREPLY=( $(compgen -W "build test lint" -- ${cur}) )
+            return 0
+            ;;
+        *)
+            ;;
+    esac
+
+    if [[ ${cur} == -* ]]; then
+        COMPREPLY=( $(compgen -W "--help --verbose --config --output" -- ${cur}) )
+        return 0
+    fi
+}
+
+complete -F _{{.vars.name}}_completions {{.vars.name}}

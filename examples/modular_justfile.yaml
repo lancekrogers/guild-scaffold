@@ -1,0 +1,32 @@
+# Modular Justfile - Go project with modular just recipes
+# Based on the festival-methodology/fest pattern with mod imports
+# Creates a scalable justfile system with separated concerns
+
+_scaffold_version: "1.0.0"
+_templates_dir: "modular-justfile"
+
+{{project_name}}/:
+  # Root Justfile with mod imports
+  _files:
+    Justfile: justfile.tmpl
+    README.md: readme.md.tmpl
+
+  # Modular justfile directory
+  .justfiles/:
+    _files:
+      build.just: build.just.tmpl
+      test.just: test.just.tmpl
+      dev.just: dev.just.tmpl
+
+  # Minimal Go structure
+  cmd/:
+    {{binary_name}}/:
+      _files:
+        main.go: main.go.tmpl
+
+  bin/:
+    _empty: true
+
+  _files:
+    go.mod: go.mod.tmpl
+    .gitignore: gitignore.tmpl

@@ -1,0 +1,10 @@
+.PHONY: build test clean
+
+build:
+	go build -o bin/{{ .vars.project_name }} ./...
+
+test:
+	go test ./...
+
+clean:
+	rm -rf bin/

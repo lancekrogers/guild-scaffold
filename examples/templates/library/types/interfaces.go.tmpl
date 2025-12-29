@@ -1,0 +1,22 @@
+package types
+
+// Processor defines the processing interface.
+type Processor interface {
+	Process(input string) (string, error)
+}
+
+// Closer defines the cleanup interface.
+type Closer interface {
+	Close() error
+}
+
+// ProcessCloser combines processing and cleanup.
+type ProcessCloser interface {
+	Processor
+	Closer
+}
+
+// Validator defines validation behavior.
+type Validator interface {
+	Validate() error
+}

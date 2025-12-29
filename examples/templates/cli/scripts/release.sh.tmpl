@@ -1,0 +1,26 @@
+#!/bin/bash
+# Release script for {{.vars.name}}
+
+set -e
+
+if [ -z "$1" ]; then
+    echo "Usage: $0 <version>"
+    exit 1
+fi
+
+VERSION=$1
+
+echo "Creating release ${VERSION}..."
+
+# Ensure clean working directory
+if [ -n "$(git status --porcelain)" ]; then
+    echo "Error: Working directory is not clean"
+    exit 1
+fi
+
+# Create and push tag
+git tag -a "v${VERSION}" -m "Release ${VERSION}"
+git push origin "v${VERSION}"
+
+echo "Release ${VERSION} created."
+echo "GitHub Actions will build and publish the release."

@@ -1,17 +1,30 @@
 # Test recipes for {{ .vars.project_name }}
 
+[private]
+default:
+    @just --list --unsorted --justfile {{`{{source_file()}}`}}
+
 # Run all tests
-test:
-    @echo "Running tests for {{ .vars.project_name }}..."
-    go test -v ./...
+[no-cd]
+all:
+    go test ./...
 
-# Run tests with coverage
-test-coverage:
-    @echo "Running tests with coverage..."
-    go test -v -coverprofile=coverage.out ./...
-    go tool cover -html=coverage.out -o coverage.html
+# Run unit tests
+[no-cd]
+unit:
+    go test -short -timeout 30s ./...
 
-# Run tests with race detector
-test-race:
-    @echo "Running tests with race detector..."
-    go test -v -race ./...
+# Run with coverage
+[no-cd]
+coverage:
+    go test -cover ./...
+
+# Generate HTML coverage report
+[no-cd]
+coverage-html:
+    go test -coverprofile=coverage.out ./... && go tool cover -html=coverage.out -o coverage.html
+
+# Run with race detection
+[no-cd]
+race:
+    go test -race ./...

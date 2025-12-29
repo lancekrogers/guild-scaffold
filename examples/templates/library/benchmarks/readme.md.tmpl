@@ -1,0 +1,18 @@
+# Benchmarks
+
+Performance benchmarks for {{.vars.name}}.
+
+## Running Benchmarks
+
+```bash
+go test -bench=. -benchmem
+```
+
+## Expected Results
+
+Results will vary by machine. Example output:
+
+```
+BenchmarkProcess-8           1000000    1234 ns/op    256 B/op    4 allocs/op
+BenchmarkProcessParallel-8   5000000     234 ns/op     64 B/op    1 allocs/op
+```

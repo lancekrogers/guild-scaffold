@@ -1,0 +1,68 @@
+package utils
+
+import "testing"
+
+func TestSanitize(t *testing.T) {
+	tests := []struct {
+		input string
+		want  string
+	}{
+		{"  hello  ", "hello"},
+		{"world", "world"},
+		{"  ", ""},
+	}
+
+	for _, tt := range tests {
+		got := Sanitize(tt.input)
+		if got != tt.want {
+			t.Errorf("Sanitize(%q) = %q, want %q", tt.input, got, tt.want)
+		}
+	}
+}
+
+func TestIsEmpty(t *testing.T) {
+	tests := []struct {
+		input string
+		want  bool
+	}{
+		{"", true},
+		{"  ", true},
+		{"hello", false},
+	}
+
+	for _, tt := range tests {
+		got := IsEmpty(tt.input)
+		if got != tt.want {
+			t.Errorf("IsEmpty(%q) = %v, want %v", tt.input, got, tt.want)
+		}
+	}
+}
+
+func TestTruncate(t *testing.T) {
+	tests := []struct {
+		input  string
+		maxLen int
+		want   string
+	}{
+		{"hello", 10, "hello"},
+		{"hello world", 5, "hello..."},
+		{"", 5, ""},
+	}
+
+	for _, tt := range tests {
+		got := Truncate(tt.input, tt.maxLen)
+		if got != tt.want {
+			t.Errorf("Truncate(%q, %d) = %q, want %q", tt.input, tt.maxLen, got, tt.want)
+		}
+	}
+}
+
+func TestContains(t *testing.T) {
+	slice := []string{"a", "b", "c"}
+	if !Contains(slice, "b") {
+		t.Error("Contains should find 'b'")
+	}
+	if Contains(slice, "d") {
+		t.Error("Contains should not find 'd'")
+	}
+}

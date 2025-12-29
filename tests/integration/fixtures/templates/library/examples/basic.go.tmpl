@@ -1,0 +1,11 @@
+package main
+
+import (
+	"fmt"
+	"{{ .vars.module_name }}"
+)
+
+func main() {
+	result := {{ .vars.package_name }}.DoSomething()
+	fmt.Println(result)
+}

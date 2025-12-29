@@ -1,0 +1,16 @@
+package internal
+
+// Internal constants.
+const (
+	DefaultTimeout = 30
+	MaxRetries     = 3
+	BufferSize     = 4096
+)
+
+// Status codes.
+const (
+	StatusPending = iota
+	StatusRunning
+	StatusComplete
+	StatusFailed
+)

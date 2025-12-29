@@ -1,0 +1,60 @@
+package internal
+
+import (
+	"fmt"
+	"io"
+	"strings"
+)
+
+// TableFormatter formats data as a table.
+type TableFormatter struct{}
+
+// Format writes data as a table.
+func (f *TableFormatter) Format(w io.Writer, data any) error {
+	switch v := data.(type) {
+	case [][]string:
+		return f.formatRows(w, v)
+	case map[string]any:
+		return f.formatMap(w, v)
+	default:
+		_, err := fmt.Fprintf(w, "%v\n", data)
+		return err
+	}
+}
+
+func (f *TableFormatter) formatRows(w io.Writer, rows [][]string) error {
+	if len(rows) == 0 {
+		return nil
+	}
+
+	// Calculate column widths
+	widths := make([]int, len(rows[0]))
+	for _, row := range rows {
+		for i, cell := range row {
+			if len(cell) > widths[i] {
+				widths[i] = len(cell)
+			}
+		}
+	}
+
+	// Print rows
+	for _, row := range rows {
+		for i, cell := range row {
+			fmt.Fprintf(w, "%-*s  ", widths[i], cell)
+		}
+		fmt.Fprintln(w)
+	}
+
+	return nil
+}
+
+func (f *TableFormatter) formatMap(w io.Writer, m map[string]any) error {
+	for k, v := range m {
+		fmt.Fprintf(w, "%s: %v\n", k, v)
+	}
+	return nil
+}
+
+func separator(width int) string {
+	return strings.Repeat("-", width)
+}

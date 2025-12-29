@@ -1,0 +1,32 @@
+package types
+
+import "errors"
+
+// Common errors.
+var (
+	ErrEmptyInput    = errors.New("input cannot be empty")
+	ErrInvalidConfig = errors.New("invalid configuration")
+	ErrNotFound      = errors.New("not found")
+)
+
+// Config holds library configuration.
+type Config struct {
+	Timeout int
+	Debug   bool
+	Options map[string]any
+}
+
+// Result represents a processing result.
+type Result struct {
+	Data    string
+	Success bool
+	Error   error
+}
+
+// Validate checks if the config is valid.
+func (c *Config) Validate() error {
+	if c.Timeout < 0 {
+		return ErrInvalidConfig
+	}
+	return nil
+}

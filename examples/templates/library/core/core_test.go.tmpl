@@ -1,0 +1,43 @@
+package core
+
+import (
+	"testing"
+
+	"{{.vars.module}}/types"
+)
+
+func TestCore_Process(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   string
+		want    string
+		wantErr error
+	}{
+		{
+			name:    "valid input",
+			input:   "test",
+			want:    "processed: test",
+			wantErr: nil,
+		},
+		{
+			name:    "empty input",
+			input:   "",
+			want:    "",
+			wantErr: types.ErrEmptyInput,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := New(&types.Config{})
+			got, err := c.Process(tt.input)
+			if err != tt.wantErr {
+				t.Errorf("Process() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if got != tt.want {
+				t.Errorf("Process() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

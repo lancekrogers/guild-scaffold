@@ -1,0 +1,34 @@
+package benchmarks
+
+import (
+	"testing"
+
+	"{{.vars.module}}"
+)
+
+func BenchmarkProcess(b *testing.B) {
+	client, err := {{.vars.name}}.New()
+	if err != nil {
+		b.Fatalf("Failed to create client: %v", err)
+	}
+	defer client.Close()
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, _ = client.Process("benchmark input")
+	}
+}
+
+func BenchmarkProcessParallel(b *testing.B) {
+	client, err := {{.vars.name}}.New()
+	if err != nil {
+		b.Fatalf("Failed to create client: %v", err)
+	}
+	defer client.Close()
+
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			_, _ = client.Process("parallel benchmark")
+		}
+	})
+}

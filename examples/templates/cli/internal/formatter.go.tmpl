@@ -1,0 +1,22 @@
+package internal
+
+import (
+	"io"
+)
+
+// Formatter formats output data.
+type Formatter interface {
+	Format(w io.Writer, data any) error
+}
+
+// NewFormatter creates a formatter for the specified format.
+func NewFormatter(format string) Formatter {
+	switch format {
+	case "json":
+		return &JSONFormatter{}
+	case "table":
+		return &TableFormatter{}
+	default:
+		return &TableFormatter{}
+	}
+}

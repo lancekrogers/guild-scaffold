@@ -1,0 +1,33 @@
+package main
+
+import "fmt"
+
+// ExamplePlugin is a sample plugin implementation.
+type ExamplePlugin struct{}
+
+// Name returns the plugin name.
+func (p *ExamplePlugin) Name() string {
+	return "example"
+}
+
+// Version returns the plugin version.
+func (p *ExamplePlugin) Version() string {
+	return "1.0.0"
+}
+
+// Description returns the plugin description.
+func (p *ExamplePlugin) Description() string {
+	return "An example plugin demonstrating the plugin interface"
+}
+
+// Execute runs the plugin.
+func (p *ExamplePlugin) Execute(args []string) error {
+	fmt.Println("Example plugin executed with args:", args)
+	return nil
+}
+
+// GetPlugin returns the plugin instance.
+// This function is required for plugin loading.
+func GetPlugin() any {
+	return &ExamplePlugin{}
+}

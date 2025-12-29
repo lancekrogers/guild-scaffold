@@ -1,6 +1,6 @@
 # Test for variable substitution
 _scaffold_version: "1.0.0"
-_templates_dir: "variables"
+_templates_dir: "templates/variables"
 
 _vars:
   project_name: "TestProject"

@@ -1,0 +1,63 @@
+# {{ .vars.project_name }}
+
+{{ .vars.description | default "A Go project with modular justfile build system." }}
+
+## Prerequisites
+
+- [Go](https://golang.org/dl/) 1.21+
+- [just](https://github.com/casey/just) command runner
+
+## Quick Start
+
+```bash
+# List available commands
+just
+
+# Build the project
+just build
+
+# Run tests
+just test all
+
+# Install to $GOBIN
+just install
+```
+
+## Project Structure
+
+```
+{{ .vars.project_name }}/
+├── Justfile              # Root justfile with mod imports
+├── .justfiles/           # Modular just recipes
+│   ├── build.just        # Cross-platform build recipes
+│   ├── test.just         # Testing recipes
+│   └── dev.just          # Development workflow recipes
+├── cmd/
+│   └── {{ .vars.binary_name | default .vars.project_name }}/
+│       └── main.go       # Application entry point
+└── bin/                  # Build output directory
+```
+
+## Just Modules
+
+This project uses just's module system for organized, scalable task management:
+
+- **xbuild**: Cross-platform build targets (`just xbuild linux`, `just xbuild darwin-arm64`)
+- **test**: Testing commands (`just test unit`, `just test coverage`)
+- **dev**: Development workflow (`just dev run`, `just dev watch`)
+
+## Common Commands
+
+| Command | Description |
+|---------|-------------|
+| `just` | List all available commands |
+| `just build` | Build the project |
+| `just lint` | Format and vet code |
+| `just test all` | Run all tests |
+| `just dev run` | Run without building |
+| `just xbuild all` | Build for all platforms |
+| `just install` | Install to $GOBIN |
+
+## License
+
+{{ .vars.license | default "MIT License" }}

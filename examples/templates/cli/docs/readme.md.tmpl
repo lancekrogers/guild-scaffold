@@ -1,0 +1,56 @@
+# {{.vars.name}} Documentation
+
+## Overview
+
+{{.vars.name}} is a command-line tool for {{.vars.description | default "managing your workflow"}}.
+
+## Commands
+
+### init
+
+Initialize a new project:
+
+```bash
+{{.vars.name}} init
+```
+
+### run
+
+Run a target:
+
+```bash
+{{.vars.name}} run [target]
+{{.vars.name}} run build --parallel 4
+{{.vars.name}} run test --dry-run
+```
+
+### list
+
+List available targets:
+
+```bash
+{{.vars.name}} list
+{{.vars.name}} list --all
+```
+
+### config
+
+Manage configuration:
+
+```bash
+{{.vars.name}} config show
+{{.vars.name}} config set key value
+```
+
+## Configuration
+
+Configuration can be specified via:
+
+1. Command-line flags
+2. Config file (`~/.{{.vars.name}}.yaml`)
+3. Environment variables
+
+## More Information
+
+- [Man page](man/{{.vars.name}}.1)
+- [Examples](examples/)

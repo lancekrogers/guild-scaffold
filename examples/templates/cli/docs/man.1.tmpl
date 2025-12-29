@@ -1,0 +1,46 @@
+.TH {{.vars.name | upper}} 1 "{{date "January 2006"}}" "{{.vars.version | default "1.0.0"}}" "User Commands"
+.SH NAME
+{{.vars.name}} \- {{.vars.description | default "A CLI application"}}
+.SH SYNOPSIS
+.B {{.vars.name}}
+[\fIOPTIONS\fR] \fICOMMAND\fR [\fIARGS\fR]
+.SH DESCRIPTION
+{{.vars.name}} is a command-line tool that provides useful functionality
+for your workflow.
+.SH COMMANDS
+.TP
+.B init
+Initialize a new project in the current directory.
+.TP
+.B run \fItarget\fR
+Run the specified target.
+.TP
+.B list
+List available targets.
+.TP
+.B config
+Manage configuration settings.
+.TP
+.B version
+Print version information.
+.SH OPTIONS
+.TP
+.BR \-h ", " \-\-help
+Show help message.
+.TP
+.BR \-v ", " \-\-verbose
+Enable verbose output.
+.TP
+.BR \-\-config " " \fIfile\fR
+Specify config file path.
+.TP
+.BR \-o ", " \-\-output " " \fIformat\fR
+Output format (json, table, yaml).
+.SH FILES
+.TP
+.I ~/.{{.vars.name}}.yaml
+User configuration file.
+.SH AUTHOR
+{{.vars.author | default "Author"}}
+.SH SEE ALSO
+Full documentation at: https://github.com/{{.vars.author | default "user"}}/{{.vars.name}}

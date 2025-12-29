@@ -1,0 +1,18 @@
+#!/bin/bash
+# Generate shell completions for {{.vars.name}}
+
+set -e
+
+OUTPUT_DIR="${OUTPUT_DIR:-completions}"
+
+mkdir -p "$OUTPUT_DIR"/{bash,zsh,fish,powershell}
+
+echo "Generating shell completions..."
+
+# Generate completions using cobra
+./bin/{{.vars.name}} completion bash > "$OUTPUT_DIR/bash/{{.vars.name}}.bash"
+./bin/{{.vars.name}} completion zsh > "$OUTPUT_DIR/zsh/_{{.vars.name}}"
+./bin/{{.vars.name}} completion fish > "$OUTPUT_DIR/fish/{{.vars.name}}.fish"
+./bin/{{.vars.name}} completion powershell > "$OUTPUT_DIR/powershell/{{.vars.name}}.ps1"
+
+echo "Completions generated in $OUTPUT_DIR/"

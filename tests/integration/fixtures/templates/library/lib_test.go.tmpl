@@ -1,0 +1,10 @@
+package {{ .vars.package_name }}
+
+import "testing"
+
+func TestDoSomething(t *testing.T) {
+	result := DoSomething()
+	if result != "{{ .vars.package_name }}" {
+		t.Errorf("expected {{ .vars.package_name }}, got %s", result)
+	}
+}

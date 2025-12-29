@@ -1,0 +1,32 @@
+package internal
+
+import (
+	"context"
+	"fmt"
+)
+
+// Executor handles command execution.
+type Executor struct {
+	config *Config
+}
+
+// NewExecutor creates a new executor.
+func NewExecutor(cfg *Config) *Executor {
+	return &Executor{config: cfg}
+}
+
+// Execute runs a command with the given arguments.
+func (e *Executor) Execute(ctx context.Context, cmd string, args []string) error {
+	if e.config.Debug {
+		fmt.Printf("[debug] Executing: %s %v\n", cmd, args)
+	}
+
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	default:
+	}
+
+	// Add your execution logic here
+	return nil
+}

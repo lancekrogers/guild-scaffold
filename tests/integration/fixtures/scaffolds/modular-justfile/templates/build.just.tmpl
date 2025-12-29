@@ -1,17 +1,26 @@
 # Build recipes for {{ .vars.project_name }}
+binary_name := "{{ .vars.project_name }}"
+bin_dir := "bin"
 
-# Build the project
-build:
-    @echo "Building {{ .vars.project_name }}..."
-    go build -v ./...
+[private]
+default:
+    @just --list --unsorted --justfile {{`{{source_file()}}`}}
 
-# Build with race detector
-build-race:
-    @echo "Building with race detector..."
-    go build -race -v ./...
+# Quick development build
+[no-cd]
+dev:
+    go build -o {{`{{bin_dir}}`}}/{{`{{binary_name}}`}} ./...
 
-# Clean build artifacts
-clean:
-    @echo "Cleaning..."
-    go clean -cache
-    rm -rf bin/
+# Build for Linux AMD64
+[no-cd]
+linux:
+    GOOS=linux GOARCH=amd64 go build -ldflags '-s -w' -o {{`{{bin_dir}}`}}/{{`{{binary_name}}`}}-linux-amd64 ./...
+
+# Build for macOS Apple Silicon
+[no-cd]
+darwin-arm64:
+    GOOS=darwin GOARCH=arm64 go build -ldflags '-s -w' -o {{`{{bin_dir}}`}}/{{`{{binary_name}}`}}-darwin-arm64 ./...
+
+# Build for all platforms
+all: linux darwin-arm64
+    @echo "All builds complete"

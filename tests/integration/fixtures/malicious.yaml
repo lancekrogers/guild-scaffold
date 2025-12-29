@@ -1,6 +1,6 @@
 # Test for path traversal and security checks
 _scaffold_version: "1.0.0"
-_templates_dir: "malicious"
+_templates_dir: "templates/malicious"
 
 # Attempt path traversal in directory names (should be caught and handled safely)
 ../../etc/:

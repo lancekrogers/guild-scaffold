@@ -1,0 +1,12 @@
+package benchmarks
+
+import (
+	"testing"
+	"{{ .vars.module_name }}"
+)
+
+func BenchmarkDoSomething(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		{{ .vars.package_name }}.DoSomething()
+	}
+}

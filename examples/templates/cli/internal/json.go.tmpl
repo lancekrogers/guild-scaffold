@@ -1,0 +1,20 @@
+package internal
+
+import (
+	"encoding/json"
+	"io"
+)
+
+// JSONFormatter formats data as JSON.
+type JSONFormatter struct {
+	Indent bool
+}
+
+// Format writes data as JSON.
+func (f *JSONFormatter) Format(w io.Writer, data any) error {
+	encoder := json.NewEncoder(w)
+	if f.Indent {
+		encoder.SetIndent("", "  ")
+	}
+	return encoder.Encode(data)
+}

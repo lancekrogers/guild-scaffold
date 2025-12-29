@@ -1,0 +1,33 @@
+#!/bin/bash
+# Install script for {{.vars.name}}
+
+set -e
+
+VERSION="${VERSION:-latest}"
+INSTALL_DIR="${INSTALL_DIR:-/usr/local/bin}"
+
+echo "Installing {{.vars.name}} ${VERSION}..."
+
+# Detect OS and architecture
+OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+ARCH=$(uname -m)
+case $ARCH in
+    x86_64) ARCH="amd64" ;;
+    aarch64|arm64) ARCH="arm64" ;;
+esac
+
+# Download binary
+DOWNLOAD_URL="https://github.com/{{.vars.author | default "user"}}/{{.vars.name}}/releases/download/${VERSION}/{{.vars.name}}_${OS}_${ARCH}.tar.gz"
+TEMP_DIR=$(mktemp -d)
+
+curl -sL "$DOWNLOAD_URL" | tar xz -C "$TEMP_DIR"
+
+# Install
+sudo mv "$TEMP_DIR/{{.vars.name}}" "$INSTALL_DIR/"
+sudo chmod +x "$INSTALL_DIR/{{.vars.name}}"
+
+# Cleanup
+rm -rf "$TEMP_DIR"
+
+echo "{{.vars.name}} installed successfully!"
+echo "Run '{{.vars.name}} --help' to get started."

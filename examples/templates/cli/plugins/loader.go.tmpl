@@ -1,0 +1,72 @@
+package plugins
+
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+	"plugin"
+)
+
+// Loader handles plugin loading.
+type Loader struct {
+	dir     string
+	plugins map[string]Plugin
+}
+
+// NewLoader creates a new plugin loader.
+func NewLoader(dir string) *Loader {
+	return &Loader{
+		dir:     dir,
+		plugins: make(map[string]Plugin),
+	}
+}
+
+// Load discovers and loads all plugins.
+func (l *Loader) Load() error {
+	entries, err := os.ReadDir(l.dir)
+	if err != nil {
+		return fmt.Errorf("failed to read plugin dir: %w", err)
+	}
+
+	for _, entry := range entries {
+		if entry.IsDir() || filepath.Ext(entry.Name()) != ".so" {
+			continue
+		}
+
+		path := filepath.Join(l.dir, entry.Name())
+		p, err := plugin.Open(path)
+		if err != nil {
+			continue
+		}
+
+		sym, err := p.Lookup("GetPlugin")
+		if err != nil {
+			continue
+		}
+
+		getPlugin, ok := sym.(func() Plugin)
+		if !ok {
+			continue
+		}
+
+		plug := getPlugin()
+		l.plugins[plug.Name()] = plug
+	}
+
+	return nil
+}
+
+// Get returns a loaded plugin by name.
+func (l *Loader) Get(name string) (Plugin, bool) {
+	p, ok := l.plugins[name]
+	return p, ok
+}
+
+// List returns all loaded plugin names.
+func (l *Loader) List() []string {
+	names := make([]string, 0, len(l.plugins))
+	for name := range l.plugins {
+		names = append(names, name)
+	}
+	return names
+}

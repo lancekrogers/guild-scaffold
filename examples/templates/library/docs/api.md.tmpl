@@ -1,0 +1,57 @@
+# API Reference
+
+## Package {{.vars.name}}
+
+### Types
+
+#### Client
+
+```go
+type Client struct {}
+```
+
+Main entry point for the library.
+
+#### Option
+
+```go
+type Option func(*Config) error
+```
+
+Configuration option for Client.
+
+### Functions
+
+#### New
+
+```go
+func New(opts ...Option) (*Client, error)
+```
+
+Creates a new Client instance.
+
+#### WithTimeout
+
+```go
+func WithTimeout(d int) Option
+```
+
+Sets the timeout duration.
+
+### Methods
+
+#### Process
+
+```go
+func (c *Client) Process(input string) (string, error)
+```
+
+Processes the input and returns the result.
+
+#### Close
+
+```go
+func (c *Client) Close() error
+```
+
+Releases resources.

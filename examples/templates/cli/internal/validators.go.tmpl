@@ -1,0 +1,37 @@
+package internal
+
+import (
+	"errors"
+	"regexp"
+)
+
+// Validators for common input types.
+
+// ValidateName checks if a name is valid.
+func ValidateName(name string) error {
+	if name == "" {
+		return errors.New("name cannot be empty")
+	}
+	if len(name) > 100 {
+		return errors.New("name too long")
+	}
+	return nil
+}
+
+// ValidateEmail checks if an email is valid.
+func ValidateEmail(email string) error {
+	pattern := `^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`
+	matched, _ := regexp.MatchString(pattern, email)
+	if !matched {
+		return errors.New("invalid email format")
+	}
+	return nil
+}
+
+// ValidatePort checks if a port number is valid.
+func ValidatePort(port int) error {
+	if port < 1 || port > 65535 {
+		return errors.New("port must be between 1 and 65535")
+	}
+	return nil
+}

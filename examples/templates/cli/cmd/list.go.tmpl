@@ -1,0 +1,32 @@
+package cmd
+
+import (
+	"fmt"
+
+	"github.com/spf13/cobra"
+)
+
+var listCmd = &cobra.Command{
+	Use:   "list",
+	Short: "List available targets",
+	Long:  `List all available targets and their status.`,
+	Run: func(cmd *cobra.Command, args []string) {
+		all, _ := cmd.Flags().GetBool("all")
+
+		fmt.Println("Available targets:")
+		fmt.Println("  build     - Build the project")
+		fmt.Println("  test      - Run tests")
+		fmt.Println("  lint      - Run linters")
+
+		if all {
+			fmt.Println("\nAdvanced targets:")
+			fmt.Println("  release   - Create a release")
+			fmt.Println("  deploy    - Deploy to production")
+		}
+	},
+}
+
+func init() {
+	rootCmd.AddCommand(listCmd)
+	listCmd.Flags().BoolP("all", "a", false, "show all targets")
+}

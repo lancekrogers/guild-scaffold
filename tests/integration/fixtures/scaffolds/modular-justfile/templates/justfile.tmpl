@@ -1,13 +1,38 @@
-# {{ .vars.project_name }} - Development Commands
-# https://github.com/casey/just
+#!/usr/bin/env just --justfile
+# {{ .vars.project_name }} - build and development tasks
 
-# Import modular recipes
-import '.just/build.just'
-import '.just/test.just'
-import '.just/dev.just'
+set dotenv-load := true
 
-# Default recipe - show available commands
+# Configuration
+binary_name := "{{ .vars.project_name }}"
+bin_dir := "bin"
+
+# Modules
+[doc('Build commands')]
+mod build '.just/build.just'
+
+[doc('Test commands')]
+mod test '.just/test.just'
+
+[doc('Development workflow')]
+mod dev '.just/dev.just'
+
+[private]
 default:
-    @echo "{{ .vars.project_name }} - Available Commands"
-    @echo "======================================"
-    @just --list
+    #!/usr/bin/env sh
+    echo "{{ .vars.project_name }}"
+    echo ""
+    just --list --unsorted
+
+# Quick build
+build:
+    go build -o {{`{{bin_dir}}`}}/{{`{{binary_name}}`}} ./...
+
+# Format and vet
+lint:
+    go fmt ./...
+    go vet ./...
+
+# Clean artifacts
+clean:
+    rm -rf {{`{{bin_dir}}`}}

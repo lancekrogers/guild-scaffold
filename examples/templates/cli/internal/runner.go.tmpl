@@ -1,0 +1,51 @@
+package internal
+
+import (
+	"context"
+	"sync"
+)
+
+// Runner manages concurrent task execution.
+type Runner struct {
+	executor *Executor
+	parallel int
+}
+
+// NewRunner creates a new runner.
+func NewRunner(exec *Executor, parallel int) *Runner {
+	return &Runner{
+		executor: exec,
+		parallel: parallel,
+	}
+}
+
+// Run executes tasks concurrently.
+func (r *Runner) Run(ctx context.Context, tasks []string) error {
+	sem := make(chan struct{}, r.parallel)
+	var wg sync.WaitGroup
+	errCh := make(chan error, len(tasks))
+
+	for _, task := range tasks {
+		wg.Add(1)
+		go func(t string) {
+			defer wg.Done()
+			sem <- struct{}{}
+			defer func() { <-sem }()
+
+			if err := r.executor.Execute(ctx, t, nil); err != nil {
+				errCh <- err
+			}
+		}(task)
+	}
+
+	wg.Wait()
+	close(errCh)
+
+	for err := range errCh {
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}

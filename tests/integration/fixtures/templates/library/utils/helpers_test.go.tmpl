@@ -1,0 +1,9 @@
+package utils
+
+import "testing"
+
+func TestHelper(t *testing.T) {
+	if Helper() != "helper" {
+		t.Error("unexpected result")
+	}
+}

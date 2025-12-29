@@ -27,6 +27,11 @@ func ExecuteInit(ctx context.Context, options *InitOptions) error {
 		}
 	}
 
+	// Check if template is an external file path
+	if IsExternalTemplate(options.TemplateName) {
+		return LoadExternalTemplate(ctx, options.TemplateName, options)
+	}
+
 	// Create registry loader
 	loader, err := scaffold.NewRegistryLoader()
 	if err != nil {
@@ -152,7 +157,7 @@ func treeToFiles(tree map[string]any, prefix string) ([]scaffold.FileEntry, erro
 				// Empty directory - create with .gitkeep
 				files = append(files, scaffold.FileEntry{
 					Path:     filepath.Join(path, ".gitkeep"),
-					Template: "", // Empty file
+					Template: "~", // Special marker for empty file
 				})
 				continue
 			}

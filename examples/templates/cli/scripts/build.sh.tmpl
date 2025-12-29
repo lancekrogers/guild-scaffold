@@ -1,0 +1,17 @@
+#!/bin/bash
+# Build script for {{.vars.name}}
+
+set -e
+
+VERSION="${VERSION:-dev}"
+COMMIT=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+LDFLAGS="-X main.version=${VERSION} -X main.commit=${COMMIT} -X main.buildDate=${BUILD_DATE}"
+
+echo "Building {{.vars.name}} ${VERSION}..."
+
+# Build for current platform
+go build -ldflags "${LDFLAGS}" -o bin/{{.vars.name}} .
+
+echo "Build complete: bin/{{.vars.name}}"

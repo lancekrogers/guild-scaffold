@@ -1,0 +1,33 @@
+package utils
+
+import (
+	"strings"
+)
+
+// Sanitize cleans and validates input strings.
+func Sanitize(s string) string {
+	return strings.TrimSpace(s)
+}
+
+// IsEmpty checks if a string is empty or whitespace-only.
+func IsEmpty(s string) bool {
+	return strings.TrimSpace(s) == ""
+}
+
+// Truncate shortens a string to the specified length.
+func Truncate(s string, maxLen int) string {
+	if len(s) <= maxLen {
+		return s
+	}
+	return s[:maxLen] + "..."
+}
+
+// Contains checks if a slice contains a value.
+func Contains[T comparable](slice []T, val T) bool {
+	for _, v := range slice {
+		if v == val {
+			return true
+		}
+	}
+	return false
+}

@@ -1,0 +1,19 @@
+package internal
+
+// Config holds the application configuration.
+type Config struct {
+	Debug   bool              `yaml:"debug" json:"debug"`
+	Output  string            `yaml:"output" json:"output"`
+	Timeout int               `yaml:"timeout" json:"timeout"`
+	Options map[string]string `yaml:"options" json:"options"`
+}
+
+// DefaultConfig returns the default configuration.
+func DefaultConfig() *Config {
+	return &Config{
+		Debug:   false,
+		Output:  "table",
+		Timeout: 300,
+		Options: make(map[string]string),
+	}
+}

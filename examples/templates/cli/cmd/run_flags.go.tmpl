@@ -1,0 +1,19 @@
+package cmd
+
+// RunFlags contains all flags for the run command
+type RunFlags struct {
+	DryRun   bool
+	Parallel int
+	Timeout  int
+	Verbose  bool
+}
+
+// DefaultRunFlags returns the default run flags
+func DefaultRunFlags() *RunFlags {
+	return &RunFlags{
+		DryRun:   false,
+		Parallel: 1,
+		Timeout:  300,
+		Verbose:  false,
+	}
+}

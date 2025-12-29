@@ -1,23 +1,29 @@
 # Development recipes for {{ .vars.project_name }}
+binary_name := "{{ .vars.project_name }}"
+bin_dir := "bin"
 
-# Run linters
-lint:
-    @echo "Running linters for {{ .vars.project_name }}..."
-    go vet ./...
-    golangci-lint run
+[private]
+default:
+    @just --list --unsorted --justfile {{`{{source_file()}}`}}
 
-# Format code
-fmt:
-    @echo "Formatting code..."
-    go fmt ./...
-    gofmt -s -w .
+# Run the application
+[no-cd]
+run *args:
+    go run ./... {{`{{args}}`}}
 
-# Run the application in development mode
-dev:
-    @echo "Starting {{ .vars.project_name }} in dev mode..."
-    go run ./cmd/main.go
-
-# Watch for changes and rebuild
+# Watch for changes (requires watchexec)
+[no-cd]
 watch:
-    @echo "Watching for changes..."
-    watchexec -e go just build
+    watchexec -e go -r -- just build
+
+# Tidy dependencies
+[no-cd]
+tidy:
+    go mod tidy
+
+# Pre-commit checks
+[no-cd]
+pre-commit:
+    just lint
+    just test all
+    @echo "Pre-commit checks passed"

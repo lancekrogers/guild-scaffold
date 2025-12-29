@@ -1,0 +1,50 @@
+package test
+
+import (
+	"os"
+	"os/exec"
+	"testing"
+)
+
+func TestCLIIntegration(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test")
+	}
+
+	binary := os.Getenv("{{.vars.name | upper}}_BINARY")
+	if binary == "" {
+		t.Skip("{{.vars.name | upper}}_BINARY not set")
+	}
+
+	tests := []struct {
+		name    string
+		args    []string
+		wantErr bool
+	}{
+		{
+			name:    "help",
+			args:    []string{"--help"},
+			wantErr: false,
+		},
+		{
+			name:    "version",
+			args:    []string{"version"},
+			wantErr: false,
+		},
+		{
+			name:    "list",
+			args:    []string{"list"},
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cmd := exec.Command(binary, tt.args...)
+			err := cmd.Run()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("{{.vars.name}} %v error = %v, wantErr %v", tt.args, err, tt.wantErr)
+			}
+		})
+	}
+}

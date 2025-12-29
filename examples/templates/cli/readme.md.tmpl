@@ -1,0 +1,66 @@
+# {{.vars.name}}
+
+{{.vars.description | default "A CLI application built with Cobra."}}
+
+## Installation
+
+### Using Go
+
+```bash
+go install {{.vars.module}}@latest
+```
+
+### Using Homebrew (macOS/Linux)
+
+```bash
+brew install {{.vars.author | default "user"}}/tap/{{.vars.name}}
+```
+
+### Binary Releases
+
+Download from the [releases page](https://github.com/{{.vars.author | default "user"}}/{{.vars.name}}/releases).
+
+## Quick Start
+
+```bash
+# Initialize a new project
+{{.vars.name}} init
+
+# List available targets
+{{.vars.name}} list
+
+# Run a target
+{{.vars.name}} run build
+```
+
+## Configuration
+
+Create `~/.{{.vars.name}}.yaml`:
+
+```yaml
+debug: false
+output: table
+timeout: 300
+```
+
+## Commands
+
+| Command | Description |
+|---------|-------------|
+| `init` | Initialize a new project |
+| `run` | Run a target |
+| `list` | List available targets |
+| `config` | Manage configuration |
+| `version` | Print version info |
+
+## Documentation
+
+See [docs/](docs/) for detailed documentation.
+
+## Contributing
+
+Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## License
+
+{{.vars.license | default "MIT"}} License - see [LICENSE](LICENSE) for details.

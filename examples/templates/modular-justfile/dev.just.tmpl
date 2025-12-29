@@ -1,0 +1,46 @@
+# Development recipes for {{ .vars.project_name }}
+binary_name := "{{ .vars.binary_name | default .vars.project_name }}"
+bin_dir := "bin"
+
+# Show available dev commands
+[private]
+default:
+    @just --list --unsorted --justfile {{`{{source_file()}}`}}
+
+# Run the application
+[no-cd]
+run *args:
+    go run ./cmd/{{ .vars.binary_name | default .vars.project_name }} {{`{{args}}`}}
+
+# Watch for changes and rebuild (requires watchexec)
+[no-cd]
+watch:
+    watchexec -e go -r -- just build
+
+# Start fresh: clean, build, and run
+[no-cd]
+fresh:
+    just clean
+    just build
+    ./{{`{{bin_dir}}`}}/{{`{{binary_name}}`}}
+
+# Generate Go code (mocks, etc.)
+[no-cd]
+generate:
+    go generate ./...
+
+# Tidy dependencies
+[no-cd]
+tidy:
+    go mod tidy
+
+# Check for updates
+[no-cd]
+outdated:
+    go list -u -m all
+
+# Pre-commit checks
+[no-cd]
+pre-commit: lint
+    just test all
+    @echo "Pre-commit checks passed"

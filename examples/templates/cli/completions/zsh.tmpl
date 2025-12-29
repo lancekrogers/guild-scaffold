@@ -1,0 +1,41 @@
+#compdef {{.vars.name}}
+
+_{{.vars.name}}() {
+    local -a commands
+    commands=(
+        'init:Initialize a new project'
+        'run:Run a target'
+        'list:List available targets'
+        'config:Manage configuration'
+        'version:Print version information'
+        'help:Help about any command'
+    )
+
+    _arguments -C \
+        '(-h --help)'{-h,--help}'[Show help]' \
+        '(-v --verbose)'{-v,--verbose}'[Enable verbose output]' \
+        '--config[Config file]:file:_files' \
+        '(-o --output)'{-o,--output}'[Output format]:format:(json table yaml)' \
+        '1: :->cmds' \
+        '*::arg:->args'
+
+    case "$state" in
+        cmds)
+            _describe -t commands 'commands' commands
+            ;;
+        args)
+            case $words[1] in
+                run)
+                    _arguments \
+                        '--dry-run[Show what would be done]' \
+                        '(-p --parallel)'{-p,--parallel}'[Parallel jobs]:number:'
+                    ;;
+                config)
+                    _arguments '1:subcommand:(show set)'
+                    ;;
+            esac
+            ;;
+    esac
+}
+
+_{{.vars.name}} "$@"

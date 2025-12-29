@@ -1,0 +1,23 @@
+# {{.vars.name}} Plugins
+
+This directory contains plugins for {{.vars.name}}.
+
+## Creating a Plugin
+
+1. Implement the `Plugin` interface
+2. Register your plugin in the loader
+3. Place the plugin binary in this directory
+
+## Plugin Interface
+
+```go
+type Plugin interface {
+    Name() string
+    Version() string
+    Execute(args []string) error
+}
+```
+
+## Example
+
+See `examples/` for a sample plugin implementation.

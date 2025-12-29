@@ -1,0 +1,36 @@
+package cmd
+
+import (
+	"fmt"
+
+	"github.com/spf13/cobra"
+)
+
+var runCmd = &cobra.Command{
+	Use:   "run [target]",
+	Short: "Run a target",
+	Long:  `Run the specified target with the current configuration.`,
+	Args:  cobra.MinimumNArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		dryRun, _ := cmd.Flags().GetBool("dry-run")
+		parallel, _ := cmd.Flags().GetInt("parallel")
+
+		target := args[0]
+
+		if dryRun {
+			fmt.Printf("[dry-run] Would run: %s\n", target)
+			return nil
+		}
+
+		fmt.Printf("Running %s (parallel=%d)...\n", target, parallel)
+		// Add your run logic here
+
+		return nil
+	},
+}
+
+func init() {
+	rootCmd.AddCommand(runCmd)
+	runCmd.Flags().Bool("dry-run", false, "show what would be done")
+	runCmd.Flags().IntP("parallel", "p", 1, "number of parallel jobs")
+}

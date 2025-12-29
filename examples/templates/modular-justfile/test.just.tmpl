@@ -1,0 +1,41 @@
+# Test recipes for {{ .vars.project_name }}
+
+# Show available test commands
+[private]
+default:
+    @just --list --unsorted --justfile {{`{{source_file()}}`}}
+
+# Run all tests
+[no-cd]
+all:
+    go test ./...
+
+# Run unit tests
+[no-cd]
+unit:
+    go test -short -timeout 30s ./...
+
+# Run unit tests with verbose output
+[no-cd]
+unit-verbose:
+    go test -v -short -timeout 30s ./...
+
+# Run tests with coverage
+[no-cd]
+coverage:
+    go test -cover ./...
+
+# Generate HTML coverage report
+[no-cd]
+coverage-html:
+    go test -coverprofile=coverage.out ./... && go tool cover -html=coverage.out -o coverage.html
+
+# Run tests with race detection
+[no-cd]
+race:
+    go test -race ./...
+
+# Run benchmarks
+[no-cd]
+bench:
+    go test -bench=. -benchmem ./...

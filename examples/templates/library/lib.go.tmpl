@@ -1,0 +1,53 @@
+package {{.vars.name}}
+
+import (
+	"{{.vars.module}}/core"
+	"{{.vars.module}}/types"
+)
+
+// Version is the current library version.
+const Version = "{{.vars.version | default "0.1.0"}}"
+
+// Client provides the main entry point for the library.
+type Client struct {
+	config *types.Config
+	core   *core.Core
+}
+
+// New creates a new Client with the given options.
+func New(opts ...Option) (*Client, error) {
+	cfg := &types.Config{}
+	for _, opt := range opts {
+		if err := opt(cfg); err != nil {
+			return nil, err
+		}
+	}
+
+	c := core.New(cfg)
+
+	return &Client{
+		config: cfg,
+		core:   c,
+	}, nil
+}
+
+// Option configures a Client.
+type Option func(*types.Config) error
+
+// WithTimeout sets the timeout duration.
+func WithTimeout(d int) Option {
+	return func(c *types.Config) error {
+		c.Timeout = d
+		return nil
+	}
+}
+
+// Process handles the main processing logic.
+func (c *Client) Process(input string) (string, error) {
+	return c.core.Process(input)
+}
+
+// Close releases resources.
+func (c *Client) Close() error {
+	return c.core.Close()
+}

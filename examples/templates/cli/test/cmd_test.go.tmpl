@@ -1,0 +1,29 @@
+package test
+
+import (
+	"bytes"
+	"testing"
+
+	"{{.vars.module}}/cmd"
+)
+
+func TestRootCommand(t *testing.T) {
+	// Test that root command executes without error
+	buf := new(bytes.Buffer)
+	// cmd.rootCmd.SetOut(buf)
+	// cmd.rootCmd.SetErr(buf)
+
+	// Execute help to verify command works
+	_ = buf
+	_ = cmd.Execute
+}
+
+func TestVersionCommand(t *testing.T) {
+	// Version command should print version info
+	t.Log("Version command test placeholder")
+}
+
+func TestListCommand(t *testing.T) {
+	// List command should list available targets
+	t.Log("List command test placeholder")
+}

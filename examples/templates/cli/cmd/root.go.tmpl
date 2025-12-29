@@ -1,0 +1,54 @@
+package cmd
+
+import (
+	"os"
+
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
+)
+
+var cfgFile string
+
+// rootCmd represents the base command
+var rootCmd = &cobra.Command{
+	Use:   "{{.vars.name}}",
+	Short: "{{.vars.description | default "A CLI application"}}",
+	Long: `{{.vars.name}} is a command-line tool that provides
+useful functionality for your workflow.
+
+Use "{{.vars.name}} [command] --help" for more information about a command.`,
+}
+
+// Execute adds all child commands to the root command and sets flags appropriately.
+func Execute() {
+	err := rootCmd.Execute()
+	if err != nil {
+		os.Exit(1)
+	}
+}
+
+func init() {
+	cobra.OnInitialize(initConfig)
+
+	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.{{.vars.name}}.yaml)")
+	rootCmd.PersistentFlags().BoolP("verbose", "v", false, "enable verbose output")
+	rootCmd.PersistentFlags().StringP("output", "o", "", "output format (json, table, yaml)")
+}
+
+// initConfig reads in config file and ENV variables if set.
+func initConfig() {
+	if cfgFile != "" {
+		viper.SetConfigFile(cfgFile)
+	} else {
+		home, err := os.UserHomeDir()
+		cobra.CheckErr(err)
+
+		viper.AddConfigPath(home)
+		viper.AddConfigPath(".")
+		viper.SetConfigType("yaml")
+		viper.SetConfigName(".{{.vars.name}}")
+	}
+
+	viper.AutomaticEnv()
+	_ = viper.ReadInConfig()
+}

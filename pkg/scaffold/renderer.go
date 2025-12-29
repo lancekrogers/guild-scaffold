@@ -101,13 +101,15 @@ func (tr *templateRenderer) RenderRecipe(ctx context.Context, recipe *Recipe, op
 			return stats, gerror.Wrap(ctx.Err(), gerror.ErrCodeCancelled, "rendering cancelled")
 		default:
 		}
-		
-		// Track template usage
-		templatesUsed[file.Template] = true
-		
+
+		// Track template usage (only for non-empty templates)
+		if file.Template != "" && file.Template != "~" {
+			templatesUsed[file.Template] = true
+		}
+
 		// Prepare render context
 		renderCtx := tr.prepareRenderContext(recipe, file, options)
-		
+
 		// Check if file already exists
 		// Note: file.Path is relative, and fileSystem already has basePath set
 		if tr.fileExists(file.Path) && !options.Overwrite {
@@ -115,20 +117,28 @@ func (tr *templateRenderer) RenderRecipe(ctx context.Context, recipe *Recipe, op
 			continue
 		}
 
-		// Render template
-		content, err := tr.RenderTemplate(ctx, file.Template, renderCtx)
-		if err != nil {
-			stats.FilesFailed++
+		var content []byte
+		var err error
 
-			// In dry run or continue on error, log and continue
-			if options.Dry {
-				continue
+		// Handle empty template markers (for .gitkeep files and empty directories)
+		if file.Template == "" || file.Template == "~" {
+			content = []byte{}
+		} else {
+			// Render template
+			content, err = tr.RenderTemplate(ctx, file.Template, renderCtx)
+			if err != nil {
+				stats.FilesFailed++
+
+				// In dry run or continue on error, log and continue
+				if options.Dry {
+					continue
+				}
+
+				return stats, gerror.Wrap(err, gerror.ErrCodeInternal, "failed to render file").
+					WithDetails("fileIndex", i).
+					WithDetails("filePath", file.Path).
+					WithDetails("template", file.Template)
 			}
-
-			return stats, gerror.Wrap(err, gerror.ErrCodeInternal, "failed to render file").
-				WithDetails("fileIndex", i).
-				WithDetails("filePath", file.Path).
-				WithDetails("template", file.Template)
 		}
 
 		// Write file (or skip in dry run)
@@ -140,7 +150,7 @@ func (tr *templateRenderer) RenderRecipe(ctx context.Context, recipe *Recipe, op
 					WithDetails("filePath", file.Path)
 			}
 		}
-		
+
 		stats.FilesGenerated++
 	}
 	

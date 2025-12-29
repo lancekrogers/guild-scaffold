@@ -1,0 +1,23 @@
+.PHONY: all test lint coverage bench clean
+
+all: test lint
+
+test:
+	go test -v -race ./...
+
+lint:
+	golangci-lint run ./...
+
+coverage:
+	go test -coverprofile=coverage.txt -covermode=atomic ./...
+	go tool cover -html=coverage.txt -o coverage.html
+
+bench:
+	go test -bench=. -benchmem ./benchmarks/
+
+clean:
+	rm -f coverage.txt coverage.html
+
+.PHONY: docs
+docs:
+	godoc -http=:6060

@@ -143,7 +143,8 @@ func (tc *templateChecker) CheckTemplates(ctx context.Context, recipe *Recipe) [
 		}
 
 		// Skip empty templates (e.g., .gitkeep files that have no content)
-		if file.Template == "" {
+		// Both "" and "~" are markers for empty files
+		if file.Template == "" || file.Template == "~" {
 			continue
 		}
 

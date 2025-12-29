@@ -1,0 +1,29 @@
+package core
+
+import (
+	"{{.vars.module}}/types"
+)
+
+// Core provides the main processing logic.
+type Core struct {
+	config *types.Config
+}
+
+// New creates a new Core instance.
+func New(cfg *types.Config) *Core {
+	return &Core{config: cfg}
+}
+
+// Process handles input and returns processed output.
+func (c *Core) Process(input string) (string, error) {
+	if input == "" {
+		return "", types.ErrEmptyInput
+	}
+	// Add your processing logic here
+	return "processed: " + input, nil
+}
+
+// Close releases any resources.
+func (c *Core) Close() error {
+	return nil
+}

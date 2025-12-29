@@ -1,0 +1,16 @@
+package internal
+
+// Implementation provides internal functionality.
+type Implementation struct {
+	initialized bool
+}
+
+// NewImplementation creates a new implementation.
+func NewImplementation() *Implementation {
+	return &Implementation{initialized: true}
+}
+
+// IsInitialized returns the initialization status.
+func (i *Implementation) IsInitialized() bool {
+	return i.initialized
+}
