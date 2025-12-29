@@ -45,7 +45,7 @@ func TestMinimalScaffoldInContainer(t *testing.T) {
 	container := GetSharedContainer(t)
 
 	// Copy minimal fixture to container
-	err = container.CopyToContainer("fixtures/minimal.yaml", "/test/minimal.yaml")
+	err := container.CopyToContainer("fixtures/minimal.yaml", "/test/minimal.yaml")
 	require.NoError(t, err)
 
 	// Copy templates
