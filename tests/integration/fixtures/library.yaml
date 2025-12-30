@@ -1,38 +1,26 @@
-# Go Library - Reusable Go package/library structure
-# Clean library layout with examples, benchmarks, and documentation
-
+# Go Library template for testing
 _scaffold_version: "1.0.0"
 _templates_dir: "templates/library"
 
-# Root package files
-pkg/:
-  "{{package_name}}/":
-    _files:
-      "{{package_name}}.go": lib.go.tmpl
-      "{{package_name}}_test.go": lib_test.go.tmpl
+_vars:
+  package_name: "testlib"
+  module_name: "github.com/example/library"
 
-# Examples
+pkg/:
+  testlib/:
+    _files:
+      testlib.go: lib.go.tmpl
+      testlib_test.go: lib_test.go.tmpl
+
 examples/:
   basic/:
     _files:
       main.go: examples/basic.go.tmpl
-      README.md: examples/basic_readme.md.tmpl
 
-  advanced/:
-    _files:
-      main.go: examples/advanced.go.tmpl
-      config.yaml: examples/advanced_config.yaml.tmpl
-
-# Documentation
 docs/:
   _files:
     README.md: docs/readme.md.tmpl
-    API.md: docs/api.md.tmpl
 
-# Root files
 _files:
   go.mod: go.mod.tmpl
   README.md: readme.md.tmpl
-  LICENSE: license.tmpl
-  .gitignore: gitignore.tmpl
-  Makefile: makefile.tmpl

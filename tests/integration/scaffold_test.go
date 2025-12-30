@@ -307,8 +307,8 @@ func TestScaffoldVariableSubstitution(t *testing.T) {
 	)
 	require.NoError(t, err, "scaffold command failed: %s", output)
 
-	// Read generated config file
-	config, err := container.ReadFile("/output/config.yaml")
+	// Read generated config file (in config/ directory per fixture structure)
+	config, err := container.ReadFile("/output/config/config.yaml")
 	require.NoError(t, err)
 
 	// Verify variables were substituted correctly

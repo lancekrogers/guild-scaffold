@@ -48,7 +48,7 @@ docs/:
 tests/:
   _empty: true
 
-_files:
-  README.md: README.md.tmpl
-  go.mod: go.mod.tmpl
-  .gitignore: gitignore.tmpl
+# Root-level files use direct mapping (not _files)
+README.md: README.md.tmpl
+go.mod: go.mod.tmpl
+.gitignore: gitignore.tmpl

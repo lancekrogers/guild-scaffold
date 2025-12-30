@@ -3,31 +3,16 @@ _scaffold_version: "1.0.0"
 _templates_dir: "templates/variables"
 
 _vars:
-  project_name: "TestProject"
-  author: "Test Author"
-  email: "test@example.com"
-  version: "1.0.0"
-  license: "MIT"
-  repo_url: "github.com/example/test"
-  description: "A test project for variable substitution"
-  year: "2024"
+  string_var: "default"
+  int_var: "0"
+  bool_var: "false"
+  special_chars: "none"
+  list_var: ""
 
-src/:
-  _files:
-    main.go: src/main.go.tmpl
-    version.go: src/version.go.tmpl
-
-docs/:
-  _files:
-    README.md: docs/README.md.tmpl
-    LICENSE: docs/LICENSE.tmpl
-
+# Directory structure triggers tree format detection
 config/:
   _files:
     config.yaml: config/config.yaml.tmpl
-    settings.json: config/settings.json.tmpl
 
-_files:
-  README.md: README.md.tmpl
-  .gitignore: gitignore.tmpl
-  Makefile: Makefile.tmpl
+# Root-level files use direct mapping
+README.md: README.md.tmpl

@@ -457,6 +457,18 @@ func NewSharedContainer() (*TestContainer, error) {
 		return nil, fmt.Errorf("failed to build scaffold binary: %w", err)
 	}
 
+	// Get library path for template mounting
+	cwd, err := os.Getwd()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get working directory: %w", err)
+	}
+	projectRoot := filepath.Join(cwd, "../..")
+	projectRoot, err = filepath.Abs(projectRoot)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get absolute path: %w", err)
+	}
+	libraryPath := filepath.Join(projectRoot, "library")
+
 	req := testcontainers.ContainerRequest{
 		Image:      "alpine:latest",
 		Cmd:        []string{"sleep", "3600"}, // Keep container running
@@ -467,6 +479,11 @@ func NewSharedContainer() (*TestContainer, error) {
 				Source:   testcontainers.GenericBindMountSource{HostPath: scaffoldBinary},
 				Target:   "/scaffold",
 				ReadOnly: false,
+			},
+			{
+				Source:   testcontainers.GenericBindMountSource{HostPath: libraryPath},
+				Target:   "/root/.config/guild/templates", // XDG config location
+				ReadOnly: true,
 			},
 		},
 	}
@@ -550,13 +567,13 @@ func buildScaffoldBinaryShared() (string, error) {
 }
 
 // Reset clears container state between tests.
-// This removes all test artifacts while keeping the container and binary intact.
-// Note: We don't clean /root/.guild as builtins depend on it being absent (not cleaned)
+// This removes all test artifacts while keeping the container, binary, and mounted templates intact.
+// Note: /root/.config/guild/templates is a bind mount and preserved across resets.
 func (tc *TestContainer) Reset() error {
 	// Remove all test artifacts - don't pre-create /output as some tests check it doesn't exist
-	// Also clean /root/.guild/scaffold.yaml but not the whole directory
+	// Clean /root/.guild (legacy location) but preserve /root/.config (XDG location with mounted templates)
 	exitCode, _, err := tc.container.Exec(tc.ctx, []string{
-		"sh", "-c", "rm -rf /test /output /home /tmp/* /scaffolds /project /root/.guild/scaffold.yaml 2>/dev/null; mkdir -p /test",
+		"sh", "-c", "rm -rf /test /output /home /tmp/* /scaffolds /project /root/.guild 2>/dev/null; mkdir -p /test",
 	})
 	if err != nil {
 		return fmt.Errorf("failed to reset container: %w", err)

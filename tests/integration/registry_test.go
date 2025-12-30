@@ -26,9 +26,9 @@ func TestScaffoldListBuiltin(t *testing.T) {
 	output, err := container.RunScaffold("list")
 	require.NoError(t, err, "list command failed: %s", output)
 
-	// Verify builtin guild-campaign is listed
-	require.Contains(t, output, "guild-campaign", "should list guild-campaign builtin")
-	require.Contains(t, output, "builtin", "should indicate builtin source")
+	// Verify guild-campaign is listed from global templates
+	require.Contains(t, output, "guild-campaign", "should list guild-campaign template")
+	require.Contains(t, output, "global", "should indicate global source")
 }
 
 // TestScaffoldListVerbose tests verbose listing with variable details
@@ -335,7 +335,7 @@ func TestScaffoldExternalRegistry(t *testing.T) {
 	output, err := container.RunScaffold("list")
 	require.NoError(t, err, "list command failed: %s", output)
 	require.Contains(t, output, "modular-justfile", "should list external scaffold")
-	require.Contains(t, output, "guild-campaign", "should still list builtin scaffold")
+	require.Contains(t, output, "guild-campaign", "should still list global scaffold")
 }
 
 // TestScaffoldExternalInit tests initializing from external scaffold
