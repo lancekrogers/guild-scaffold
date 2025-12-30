@@ -6,11 +6,12 @@ package templates
 import (
 	"embed"
 	"io/fs"
-	
+
 	"github.com/guild-framework/guild-core/pkg/gerror"
 )
 
 // EmbeddedTemplates contains the embedded template files
+//
 //go:embed templates
 var EmbeddedTemplates embed.FS
 

@@ -46,20 +46,20 @@ func init() {
 // runValidate executes the validate command
 func runValidate(cmd *cobra.Command, args []string) error {
 	ctx := cmd.Context()
-	
+
 	var scaffoldPath string
 	if len(args) > 0 {
 		scaffoldPath = args[0]
 	} else {
 		scaffoldPath = "scaffold.yaml" // Default
 	}
-	
+
 	options := &cli.ValidateOptions{
 		ScaffoldPath: scaffoldPath,
 		Template:     validateFlags.Template,
 		Verbose:      validateFlags.Verbose,
 		Format:       validateFlags.Format,
 	}
-	
+
 	return cli.ValidateScaffold(ctx, options)
 }

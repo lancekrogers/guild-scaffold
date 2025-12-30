@@ -29,29 +29,29 @@ func newSemanticValidator() *semanticValidator {
 // Validate performs comprehensive semantic validation
 func (sv *semanticValidator) Validate(ctx context.Context, recipe *Recipe) []ValidationError {
 	var errors []ValidationError
-	
+
 	// Validate templates exist (if we have a filesystem)
 	if sv.templateChecker != nil {
 		templateErrors := sv.templateChecker.CheckTemplates(ctx, recipe)
 		errors = append(errors, templateErrors...)
 	}
-	
+
 	// Validate paths are safe
 	pathErrors := sv.pathValidator.CheckPaths(recipe)
 	errors = append(errors, pathErrors...)
-	
+
 	// Validate variable references
 	varErrors := sv.variableChecker.CheckVariables(recipe)
 	errors = append(errors, varErrors...)
-	
+
 	// Validate scaffold version format
 	versionErrors := sv.validateScaffoldVersion(recipe)
 	errors = append(errors, versionErrors...)
-	
+
 	// Validate template directory
 	dirErrors := sv.validateTemplatesDirectory(recipe)
 	errors = append(errors, dirErrors...)
-	
+
 	return errors
 }
 
@@ -65,10 +65,10 @@ func (sv *semanticValidator) SetTemplateFS(fsys fs.FS) {
 // validateScaffoldVersion validates the scaffold version format
 func (sv *semanticValidator) validateScaffoldVersion(recipe *Recipe) []ValidationError {
 	var errors []ValidationError
-	
+
 	// Check semantic version format (simplified)
 	versionRegex := regexp.MustCompile(`^(\d+)\.(\d+)(?:\.(\d+))?(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$`)
-	
+
 	if !versionRegex.MatchString(recipe.ScaffoldVersion) {
 		errors = append(errors, ValidationError{
 			Field:   "scaffold_version",
@@ -77,14 +77,14 @@ func (sv *semanticValidator) validateScaffoldVersion(recipe *Recipe) []Validatio
 			Code:    ErrCodeValidation,
 		})
 	}
-	
+
 	return errors
 }
 
 // validateTemplatesDirectory validates the templates directory path
 func (sv *semanticValidator) validateTemplatesDirectory(recipe *Recipe) []ValidationError {
 	var errors []ValidationError
-	
+
 	// Check for invalid characters
 	if strings.ContainsAny(recipe.TemplatesDir, `<>:"|?*`) {
 		errors = append(errors, ValidationError{
@@ -94,7 +94,7 @@ func (sv *semanticValidator) validateTemplatesDirectory(recipe *Recipe) []Valida
 			Code:    ErrCodeInvalidPath,
 		})
 	}
-	
+
 	// Check for path traversal
 	if strings.Contains(recipe.TemplatesDir, "..") {
 		errors = append(errors, ValidationError{
@@ -104,7 +104,7 @@ func (sv *semanticValidator) validateTemplatesDirectory(recipe *Recipe) []Valida
 			Code:    ErrCodeInvalidPath,
 		})
 	}
-	
+
 	return errors
 }
 
@@ -183,7 +183,7 @@ func (tc *templateChecker) CheckTemplates(ctx context.Context, recipe *Recipe) [
 // validateTemplateSyntax checks if a template has valid Go template syntax
 func (tc *templateChecker) validateTemplateSyntax(templatePath, templateName string) []ValidationError {
 	var errors []ValidationError
-	
+
 	// Read template content
 	content, err := fs.ReadFile(tc.templateFS, templatePath)
 	if err != nil {
@@ -195,7 +195,7 @@ func (tc *templateChecker) validateTemplateSyntax(templatePath, templateName str
 		})
 		return errors
 	}
-	
+
 	// Try to parse template
 	tmpl := template.New(templateName).Funcs(getValidationTemplateFuncMap())
 	if _, err := tmpl.Parse(string(content)); err != nil {
@@ -206,7 +206,7 @@ func (tc *templateChecker) validateTemplateSyntax(templatePath, templateName str
 			Code:    ErrCodeTemplateRender,
 		})
 	}
-	
+
 	return errors
 }
 
@@ -221,9 +221,9 @@ type pathValidator struct{}
 // CheckPaths validates that all file paths are safe and valid
 func (pv *pathValidator) CheckPaths(recipe *Recipe) []ValidationError {
 	var errors []ValidationError
-	
+
 	pathsSeen := make(map[string]int)
-	
+
 	for i, file := range recipe.Files {
 		// Check for duplicate paths
 		if prevIndex, exists := pathsSeen[file.Path]; exists {
@@ -235,25 +235,25 @@ func (pv *pathValidator) CheckPaths(recipe *Recipe) []ValidationError {
 			})
 		}
 		pathsSeen[file.Path] = i
-		
+
 		// Validate path safety
 		if pathErrors := pv.validatePathSafety(file.Path, i); len(pathErrors) > 0 {
 			errors = append(errors, pathErrors...)
 		}
-		
+
 		// Validate path format
 		if formatErrors := pv.validatePathFormat(file.Path, i); len(formatErrors) > 0 {
 			errors = append(errors, formatErrors...)
 		}
 	}
-	
+
 	return errors
 }
 
 // validatePathSafety ensures paths are safe
 func (pv *pathValidator) validatePathSafety(path string, index int) []ValidationError {
 	var errors []ValidationError
-	
+
 	// Check for absolute paths
 	if filepath.IsAbs(path) {
 		errors = append(errors, ValidationError{
@@ -263,7 +263,7 @@ func (pv *pathValidator) validatePathSafety(path string, index int) []Validation
 			Code:    ErrCodeInvalidPath,
 		})
 	}
-	
+
 	// Check for path traversal
 	cleanPath := filepath.Clean(path)
 	if strings.Contains(cleanPath, "..") || strings.HasPrefix(cleanPath, "../") {
@@ -274,14 +274,14 @@ func (pv *pathValidator) validatePathSafety(path string, index int) []Validation
 			Code:    ErrCodeInvalidPath,
 		})
 	}
-	
+
 	return errors
 }
 
 // validatePathFormat validates path formatting
 func (pv *pathValidator) validatePathFormat(path string, index int) []ValidationError {
 	var errors []ValidationError
-	
+
 	// Check for empty path
 	if strings.TrimSpace(path) == "" {
 		errors = append(errors, ValidationError{
@@ -291,7 +291,7 @@ func (pv *pathValidator) validatePathFormat(path string, index int) []Validation
 			Code:    ErrCodeValidation,
 		})
 	}
-	
+
 	// Check for invalid characters (Windows restrictions)
 	invalidChars := `<>:"|?*`
 	for _, char := range invalidChars {
@@ -304,14 +304,14 @@ func (pv *pathValidator) validatePathFormat(path string, index int) []Validation
 			})
 		}
 	}
-	
+
 	// Check for reserved names (Windows)
 	baseName := strings.ToUpper(filepath.Base(path))
 	reserved := []string{"CON", "PRN", "AUX", "NUL"}
 	for i := 1; i <= 9; i++ {
 		reserved = append(reserved, fmt.Sprintf("COM%d", i), fmt.Sprintf("LPT%d", i))
 	}
-	
+
 	for _, res := range reserved {
 		if baseName == res || strings.HasPrefix(baseName, res+".") {
 			errors = append(errors, ValidationError{
@@ -322,7 +322,7 @@ func (pv *pathValidator) validatePathFormat(path string, index int) []Validation
 			})
 		}
 	}
-	
+
 	return errors
 }
 
@@ -337,15 +337,15 @@ type variableChecker struct{}
 // CheckVariables validates variable usage and references
 func (vc *variableChecker) CheckVariables(recipe *Recipe) []ValidationError {
 	var errors []ValidationError
-	
+
 	// Collect all defined variables
 	definedVars := make(map[string]bool)
-	
+
 	// Add global variables
 	for key := range recipe.Vars {
 		definedVars[key] = true
 	}
-	
+
 	// Check each file entry
 	for i, file := range recipe.Files {
 		// Validate variable names in With map
@@ -353,31 +353,31 @@ func (vc *variableChecker) CheckVariables(recipe *Recipe) []ValidationError {
 			if varErrors := vc.validateVariableName(key, fmt.Sprintf("files[%d].with", i)); len(varErrors) > 0 {
 				errors = append(errors, varErrors...)
 			}
-			
+
 			if valueErrors := vc.validateVariableValue(value, fmt.Sprintf("files[%d].with.%s", i, key)); len(valueErrors) > 0 {
 				errors = append(errors, valueErrors...)
 			}
 		}
 	}
-	
+
 	// Validate global variable names and values
 	for key, value := range recipe.Vars {
 		if varErrors := vc.validateVariableName(key, "vars"); len(varErrors) > 0 {
 			errors = append(errors, varErrors...)
 		}
-		
+
 		if valueErrors := vc.validateVariableValue(value, fmt.Sprintf("vars.%s", key)); len(valueErrors) > 0 {
 			errors = append(errors, valueErrors...)
 		}
 	}
-	
+
 	return errors
 }
 
 // validateVariableName validates variable naming conventions
 func (vc *variableChecker) validateVariableName(name, field string) []ValidationError {
 	var errors []ValidationError
-	
+
 	// Check for empty name
 	if strings.TrimSpace(name) == "" {
 		errors = append(errors, ValidationError{
@@ -388,7 +388,7 @@ func (vc *variableChecker) validateVariableName(name, field string) []Validation
 		})
 		return errors
 	}
-	
+
 	// Check for valid identifier (letters, numbers, underscores, must start with letter or underscore)
 	validName := regexp.MustCompile(`^[a-zA-Z_][a-zA-Z0-9_]*$`)
 	if !validName.MatchString(name) {
@@ -399,7 +399,7 @@ func (vc *variableChecker) validateVariableName(name, field string) []Validation
 			Code:    ErrCodeValidation,
 		})
 	}
-	
+
 	// Check for reserved template variable names
 	reserved := []string{"vars", "with", "file", "recipe"}
 	for _, res := range reserved {
@@ -412,14 +412,14 @@ func (vc *variableChecker) validateVariableName(name, field string) []Validation
 			})
 		}
 	}
-	
+
 	return errors
 }
 
 // validateVariableValue validates variable values
 func (vc *variableChecker) validateVariableValue(value any, field string) []ValidationError {
 	var errors []ValidationError
-	
+
 	// Check for complex types that might not serialize well
 	switch v := value.(type) {
 	case map[string]any:
@@ -453,7 +453,7 @@ func (vc *variableChecker) validateVariableValue(value any, field string) []Vali
 			Code:    ErrCodeValidation,
 		})
 	}
-	
+
 	return errors
 }
 

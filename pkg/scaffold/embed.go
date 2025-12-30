@@ -28,11 +28,11 @@ type TemplateLibrary struct {
 
 // ScaffoldSpec represents the scaffold.yaml specification
 type ScaffoldSpec struct {
-	Scaffold         ScaffoldMetadata       `yaml:"scaffold"`
-	Categories       map[string]Category    `yaml:"categories"`
-	Presets          map[string]Preset      `yaml:"presets"`
-	VariableSchemas  map[string]VarSchema   `yaml:"variable_schemas"`
-	Functions        map[string]FuncDoc     `yaml:"functions"`
+	Scaffold        ScaffoldMetadata     `yaml:"scaffold"`
+	Categories      map[string]Category  `yaml:"categories"`
+	Presets         map[string]Preset    `yaml:"presets"`
+	VariableSchemas map[string]VarSchema `yaml:"variable_schemas"`
+	Functions       map[string]FuncDoc   `yaml:"functions"`
 }
 
 // ScaffoldMetadata contains basic scaffold information
@@ -44,8 +44,8 @@ type ScaffoldMetadata struct {
 
 // Category represents a template category
 type Category struct {
-	Description string           `yaml:"description"`
-	Templates   []TemplateInfo   `yaml:"templates"`
+	Description string         `yaml:"description"`
+	Templates   []TemplateInfo `yaml:"templates"`
 }
 
 // TemplateInfo describes a template's metadata
@@ -392,12 +392,12 @@ func (tl *TemplateLibrary) ClearCache() {
 
 // TemplateStats provides statistics about the template library
 type TemplateStats struct {
-	TotalTemplates    int                 `json:"total_templates"`
-	CategoriesCount   int                 `json:"categories_count"`
-	PresetsCount      int                 `json:"presets_count"`
-	CachedTemplates   int                 `json:"cached_templates"`
-	Categories        map[string]int      `json:"categories"`
-	LastLoaded        time.Time           `json:"last_loaded"`
+	TotalTemplates  int            `json:"total_templates"`
+	CategoriesCount int            `json:"categories_count"`
+	PresetsCount    int            `json:"presets_count"`
+	CachedTemplates int            `json:"cached_templates"`
+	Categories      map[string]int `json:"categories"`
+	LastLoaded      time.Time      `json:"last_loaded"`
 }
 
 // GetStats returns statistics about the template library

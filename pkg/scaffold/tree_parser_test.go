@@ -99,7 +99,7 @@ project/:
 				},
 				Vars: map[string]any{
 					"project_name": "TestProject",
-					"version":      "1.0.0",  // Using string to avoid float parsing issues
+					"version":      "1.0.0", // Using string to avoid float parsing issues
 				},
 			},
 			wantErr: false,
@@ -168,25 +168,25 @@ this is not valid yaml
 		t.Run(tt.name, func(t *testing.T) {
 			tp := NewTreeParser()
 			got, err := tp.ParseTreeFormat([]byte(tt.input))
-			
+
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ParseTreeFormat() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			
+
 			if !tt.wantErr {
 				if got.ScaffoldVersion != tt.want.ScaffoldVersion {
 					t.Errorf("ScaffoldVersion = %v, want %v", got.ScaffoldVersion, tt.want.ScaffoldVersion)
 				}
-				
+
 				if got.TemplatesDir != tt.want.TemplatesDir {
 					t.Errorf("TemplatesDir = %v, want %v", got.TemplatesDir, tt.want.TemplatesDir)
 				}
-				
+
 				if !reflect.DeepEqual(got.Vars, tt.want.Vars) {
 					t.Errorf("Vars = %v, want %v", got.Vars, tt.want.Vars)
 				}
-				
+
 				// Sort files for comparison
 				if len(got.Files) != len(tt.want.Files) {
 					t.Errorf("Files length = %v, want %v", len(got.Files), len(tt.want.Files))
@@ -194,15 +194,15 @@ this is not valid yaml
 					// Create maps for easier comparison
 					gotMap := make(map[string]string)
 					wantMap := make(map[string]string)
-					
+
 					for _, f := range got.Files {
 						gotMap[f.Path] = f.Template
 					}
-					
+
 					for _, f := range tt.want.Files {
 						wantMap[f.Path] = f.Template
 					}
-					
+
 					if !reflect.DeepEqual(gotMap, wantMap) {
 						t.Errorf("Files mapping = %v, want %v", gotMap, wantMap)
 					}
@@ -214,7 +214,7 @@ this is not valid yaml
 
 func TestTreeParser_ConvertRecipeToTree(t *testing.T) {
 	tp := NewTreeParser()
-	
+
 	recipe := &Recipe{
 		ScaffoldVersion: "1.0.0",
 		TemplatesDir:    "templates",
@@ -227,58 +227,58 @@ func TestTreeParser_ConvertRecipeToTree(t *testing.T) {
 			"project_name": "TestProject",
 		},
 	}
-	
+
 	tree, err := tp.ConvertRecipeToTree(recipe)
 	if err != nil {
 		t.Fatalf("ConvertRecipeToTree() error = %v", err)
 	}
-	
+
 	// Check metadata
 	if tree["_scaffold_version"] != "1.0.0" {
 		t.Errorf("_scaffold_version = %v, want %v", tree["_scaffold_version"], "1.0.0")
 	}
-	
+
 	if tree["_templates_dir"] != "templates" {
 		t.Errorf("_templates_dir = %v, want %v", tree["_templates_dir"], "templates")
 	}
-	
+
 	// Check vars
 	vars, ok := tree["_vars"].(map[string]any)
 	if !ok {
 		t.Fatal("_vars is not a map")
 	}
-	
+
 	if vars["project_name"] != "TestProject" {
 		t.Errorf("project_name = %v, want %v", vars["project_name"], "TestProject")
 	}
-	
+
 	// Check project structure
 	project, ok := tree["project/"].(map[string]interface{})
 	if !ok {
 		t.Fatal("project/ is not a map")
 	}
-	
+
 	// Check root files
 	files, ok := project["_files"].(map[string]interface{})
 	if !ok {
 		t.Fatal("project/_files is not a map")
 	}
-	
+
 	if files["README.md"] != "readme.tmpl" {
 		t.Errorf("README.md = %v, want %v", files["README.md"], "readme.tmpl")
 	}
-	
+
 	// Check nested structure
 	src, ok := project["src/"].(map[string]interface{})
 	if !ok {
 		t.Fatal("project/src/ is not a map")
 	}
-	
+
 	srcFiles, ok := src["_files"].(map[string]interface{})
 	if !ok {
 		t.Fatal("project/src/_files is not a map")
 	}
-	
+
 	if srcFiles["main.go"] != "main.tmpl" {
 		t.Errorf("main.go = %v, want %v", srcFiles["main.go"], "main.tmpl")
 	}
@@ -287,7 +287,7 @@ func TestTreeParser_ConvertRecipeToTree(t *testing.T) {
 func TestTreeParser_RoundTrip(t *testing.T) {
 	// Test that we can parse a tree, convert back, and get the same result
 	tp := NewTreeParser()
-	
+
 	originalYAML := `
 _scaffold_version: "1.0.0"
 _templates_dir: "templates"
@@ -308,34 +308,34 @@ myproject/:
   _files:
     .gitignore: gitignore.tmpl
 `
-	
+
 	// Parse the tree format
 	recipe, err := tp.ParseTreeFormat([]byte(originalYAML))
 	if err != nil {
 		t.Fatalf("ParseTreeFormat() error = %v", err)
 	}
-	
+
 	// Convert back to tree
 	tree, err := tp.ConvertRecipeToTree(recipe)
 	if err != nil {
 		t.Fatalf("ConvertRecipeToTree() error = %v", err)
 	}
-	
+
 	// Parse the tree again to get a second recipe
 	// For this test, we'll just verify the tree structure
 	if tree["_scaffold_version"] != "1.0.0" {
 		t.Errorf("Round trip failed: scaffold_version = %v", tree["_scaffold_version"])
 	}
-	
+
 	if tree["_templates_dir"] != "templates" {
 		t.Errorf("Round trip failed: templates_dir = %v", tree["_templates_dir"])
 	}
-	
+
 	vars := tree["_vars"].(map[string]any)
 	if vars["name"] != "TestProject" {
 		t.Errorf("Round trip failed: vars.name = %v", vars["name"])
 	}
-	
+
 	// Verify file count matches
 	if len(recipe.Files) != 4 {
 		t.Errorf("Round trip failed: expected 4 files, got %d", len(recipe.Files))

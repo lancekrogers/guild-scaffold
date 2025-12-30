@@ -16,16 +16,16 @@ type VariableHandler func(path string, context map[string]any) ([]byte, error)
 // Handlers is the registry of all available variable handlers
 // Variables in YAML are referenced as {VARIABLE_NAME}
 var Handlers = map[string]VariableHandler{
-	"DATABASE_FILE":   createDatabaseFile,
-	"SOCKET_FILE":     createSocketFile,
-	"UUID_FILE":       generateUUIDFile,
-	"TIMESTAMP_FILE":  createTimestampFile,
-	"ENV_FILE":        createEnvFile,
-	"CONFIG_FILE":     createConfigFile,
-	"SECRET_FILE":     generateSecretFile,
-	"LICENSE_FILE":    createLicenseFile,
-	"GITKEEP":         createGitkeepFile,
-	"EMPTY":           createEmptyFile,
+	"DATABASE_FILE":  createDatabaseFile,
+	"SOCKET_FILE":    createSocketFile,
+	"UUID_FILE":      generateUUIDFile,
+	"TIMESTAMP_FILE": createTimestampFile,
+	"ENV_FILE":       createEnvFile,
+	"CONFIG_FILE":    createConfigFile,
+	"SECRET_FILE":    generateSecretFile,
+	"LICENSE_FILE":   createLicenseFile,
+	"GITKEEP":        createGitkeepFile,
+	"EMPTY":          createEmptyFile,
 }
 
 // createDatabaseFile creates an SQLite database with initial schema
@@ -59,7 +59,7 @@ INSERT INTO metadata (key, value) VALUES
     ('created', '%s'),
     ('path', '%s');
 `
-	
+
 	now := time.Now().Format(time.RFC3339)
 	content := fmt.Sprintf(schema, now, path, now, path)
 	return []byte(content), nil
@@ -96,7 +96,7 @@ max_connections: 100
 keep_alive: true
 keep_alive_period: 30
 `
-	
+
 	now := time.Now().Format(time.RFC3339)
 	// For unix sockets, use the file path; for network, could be from context
 	address := path
@@ -107,7 +107,7 @@ keep_alive_period: 30
 			address = "localhost:8080"
 		}
 	}
-	
+
 	content := fmt.Sprintf(config, now, path, address)
 	return []byte(content), nil
 }
@@ -119,22 +119,22 @@ func generateUUIDFile(path string, ctx map[string]any) ([]byte, error) {
 	if _, err := rand.Read(uuid); err != nil {
 		return nil, fmt.Errorf("failed to generate UUID: %w", err)
 	}
-	
+
 	// Set version (4) and variant bits
 	uuid[6] = (uuid[6] & 0x0f) | 0x40
 	uuid[8] = (uuid[8] & 0x3f) | 0x80
-	
+
 	// Format as string
 	uuidStr := fmt.Sprintf("%x-%x-%x-%x-%x",
 		uuid[0:4], uuid[4:6], uuid[6:8], uuid[8:10], uuid[10:16])
-	
+
 	return []byte(uuidStr), nil
 }
 
 // createTimestampFile creates a file with current timestamp information
 func createTimestampFile(path string, ctx map[string]any) ([]byte, error) {
 	now := time.Now()
-	
+
 	content := fmt.Sprintf(`# Timestamp File
 # Generated at: %s
 
@@ -163,7 +163,7 @@ timezone: %s
 		now.Second(),
 		now.Location().String(),
 	)
-	
+
 	return []byte(content), nil
 }
 
@@ -173,7 +173,7 @@ func createEnvFile(path string, ctx map[string]any) ([]byte, error) {
 	if name, ok := ctx["project_name"].(string); ok {
 		projectName = name
 	}
-	
+
 	content := fmt.Sprintf(`# Environment Configuration
 # Project: %s
 # Generated: %s
@@ -216,14 +216,14 @@ FEATURE_BETA_API=false
 		projectName,
 		generateRandomSecret(32),
 	)
-	
+
 	return []byte(content), nil
 }
 
 // createConfigFile creates a configuration file template
 func createConfigFile(path string, ctx map[string]any) ([]byte, error) {
 	ext := filepath.Ext(path)
-	
+
 	switch ext {
 	case ".yaml", ".yml":
 		return createYAMLConfig(path, ctx)
@@ -242,7 +242,7 @@ func createYAMLConfig(path string, ctx map[string]any) ([]byte, error) {
 	if name, ok := ctx["project_name"].(string); ok {
 		projectName = name
 	}
-	
+
 	content := fmt.Sprintf(`# Configuration File
 # Generated: %s
 
@@ -279,7 +279,7 @@ cache:
 		projectName,
 		projectName,
 	)
-	
+
 	return []byte(content), nil
 }
 
@@ -289,7 +289,7 @@ func createJSONConfig(path string, ctx map[string]any) ([]byte, error) {
 	if name, ok := ctx["project_name"].(string); ok {
 		projectName = name
 	}
-	
+
 	content := fmt.Sprintf(`{
   "_comment": "Generated: %s",
   "app": {
@@ -320,7 +320,7 @@ func createJSONConfig(path string, ctx map[string]any) ([]byte, error) {
 		projectName,
 		projectName,
 	)
-	
+
 	return []byte(content), nil
 }
 
@@ -330,7 +330,7 @@ func createTOMLConfig(path string, ctx map[string]any) ([]byte, error) {
 	if name, ok := ctx["project_name"].(string); ok {
 		projectName = name
 	}
-	
+
 	content := fmt.Sprintf(`# Configuration File
 # Generated: %s
 
@@ -361,7 +361,7 @@ output = "stdout"
 		projectName,
 		projectName,
 	)
-	
+
 	return []byte(content), nil
 }
 
@@ -371,7 +371,7 @@ func generateSecretFile(path string, ctx map[string]any) ([]byte, error) {
 	if l, ok := ctx["length"].(int); ok && l > 0 {
 		length = l
 	}
-	
+
 	secret := generateRandomSecret(length)
 	return []byte(secret), nil
 }
@@ -382,14 +382,14 @@ func createLicenseFile(path string, ctx map[string]any) ([]byte, error) {
 	if lt, ok := ctx["license"].(string); ok {
 		licenseType = lt
 	}
-	
+
 	author := "Your Name"
 	if a, ok := ctx["author"].(string); ok {
 		author = a
 	}
-	
+
 	year := time.Now().Year()
-	
+
 	var content string
 	switch licenseType {
 	case "MIT":
@@ -414,7 +414,7 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.`, year, author)
-		
+
 	case "Apache-2.0", "Apache":
 		content = fmt.Sprintf(`Copyright %d %s
 
@@ -429,11 +429,11 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.`, year, author)
-		
+
 	default:
 		content = fmt.Sprintf("Copyright (c) %d %s\nAll rights reserved.", year, author)
 	}
-	
+
 	return []byte(content), nil
 }
 
@@ -488,13 +488,13 @@ func ProcessVariable(value string, path string, context map[string]any) ([]byte,
 	if !IsVariable(value) {
 		return nil, fmt.Errorf("not a variable: %s", value)
 	}
-	
+
 	varName := ExtractVariableName(value)
 	handler, ok := GetHandler(varName)
 	if !ok {
 		return nil, fmt.Errorf("unknown variable: %s", varName)
 	}
-	
+
 	return handler(path, context)
 }
 

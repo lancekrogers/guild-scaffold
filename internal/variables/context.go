@@ -12,21 +12,21 @@ type Context struct {
 	// Project information
 	ProjectName string
 	ProjectPath string
-	
+
 	// User information
 	Author   string
 	Email    string
 	Username string
-	
+
 	// System information
 	OS       string
 	Arch     string
 	Hostname string
-	
+
 	// Time information
 	Timestamp time.Time
 	Year      int
-	
+
 	// Custom data
 	Custom map[string]any
 }
@@ -38,9 +38,9 @@ func NewContext() *Context {
 	if username == "" {
 		username = os.Getenv("USERNAME") // Windows
 	}
-	
+
 	now := time.Now()
-	
+
 	return &Context{
 		ProjectName: filepath.Base(mustGetwd()),
 		ProjectPath: mustGetwd(),
@@ -100,12 +100,12 @@ func (c *Context) ToMap() map[string]any {
 		"timestamp":    c.Timestamp,
 		"year":         c.Year,
 	}
-	
+
 	// Add custom data
 	for k, v := range c.Custom {
 		m[k] = v
 	}
-	
+
 	return m
 }
 
@@ -124,16 +124,16 @@ func getGitUser() string {
 	if gitUser := os.Getenv("GIT_AUTHOR_NAME"); gitUser != "" {
 		return gitUser
 	}
-	
+
 	// Try system user
 	if user := os.Getenv("USER"); user != "" {
 		return user
 	}
-	
+
 	if user := os.Getenv("USERNAME"); user != "" {
 		return user
 	}
-	
+
 	return "Author"
 }
 
@@ -142,10 +142,10 @@ func getGitEmail() string {
 	if gitEmail := os.Getenv("GIT_AUTHOR_EMAIL"); gitEmail != "" {
 		return gitEmail
 	}
-	
+
 	if email := os.Getenv("EMAIL"); email != "" {
 		return email
 	}
-	
+
 	return "email@example.com"
 }

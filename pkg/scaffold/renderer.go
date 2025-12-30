@@ -21,10 +21,10 @@ import (
 type Renderer interface {
 	// RenderTemplate renders a single template with the given context
 	RenderTemplate(ctx context.Context, templateName string, context RenderContext) ([]byte, error)
-	
+
 	// RenderRecipe renders all files defined in a recipe
 	RenderRecipe(ctx context.Context, recipe *Recipe, options Options) (*ScaffoldStats, error)
-	
+
 	// SetTemplateFS sets the filesystem containing templates
 	SetTemplateFS(fsys fs.FS)
 }
@@ -60,22 +60,22 @@ func (tr *templateRenderer) RenderTemplate(ctx context.Context, templateName str
 	if err := ctx.Err(); err != nil {
 		return nil, gerror.Wrap(err, gerror.ErrCodeCancelled, "context cancelled before rendering")
 	}
-	
+
 	// Get or parse template
 	tmpl, err := tr.getTemplate(ctx, templateName, context.Recipe.TemplatesDir)
 	if err != nil {
 		return nil, ErrTemplateRender(templateName, err)
 	}
-	
+
 	// Prepare template data
 	data := tr.prepareTemplateData(context)
-	
+
 	// Render template
 	var buf bytes.Buffer
 	if err := tmpl.Execute(&buf, data); err != nil {
 		return nil, ErrTemplateRender(templateName, err)
 	}
-	
+
 	return buf.Bytes(), nil
 }
 
@@ -84,15 +84,15 @@ func (tr *templateRenderer) RenderRecipe(ctx context.Context, recipe *Recipe, op
 	stats := &ScaffoldStats{
 		TotalFiles: len(recipe.Files),
 	}
-	
+
 	startTime := time.Now()
 	defer func() {
 		stats.Duration = time.Since(startTime)
 	}()
-	
+
 	// Track unique templates for stats
 	templatesUsed := make(map[string]bool)
-	
+
 	// Process each file
 	for i, file := range recipe.Files {
 		// Check context cancellation
@@ -162,7 +162,7 @@ func (tr *templateRenderer) RenderRecipe(ctx context.Context, recipe *Recipe, op
 
 		stats.FilesGenerated++
 	}
-	
+
 	stats.TemplatesParsed = len(templatesUsed)
 	return stats, nil
 }
@@ -173,14 +173,14 @@ func (tr *templateRenderer) getTemplate(ctx context.Context, templateName, templ
 	if cached := tr.templateCache.Get(templateName); cached != nil {
 		return cached, nil
 	}
-	
+
 	// Read template file
 	templatePath := filepath.Join(templatesDir, templateName)
 	content, err := fs.ReadFile(tr.templateFS, templatePath)
 	if err != nil {
 		return nil, ErrTemplateNotFound(templateName, templatesDir)
 	}
-	
+
 	// Parse template
 	tmpl := template.New(templateName).Funcs(tr.funcMap)
 	parsedTemplate, err := tmpl.Parse(string(content))
@@ -188,10 +188,10 @@ func (tr *templateRenderer) getTemplate(ctx context.Context, templateName, templ
 		return nil, gerror.Wrap(err, gerror.ErrCodeParsing, "failed to parse template").
 			WithDetails("template", templateName)
 	}
-	
+
 	// Cache parsed template
 	tr.templateCache.Set(templateName, parsedTemplate)
-	
+
 	return parsedTemplate, nil
 }
 
@@ -199,22 +199,22 @@ func (tr *templateRenderer) getTemplate(ctx context.Context, templateName, templ
 func (tr *templateRenderer) prepareRenderContext(recipe *Recipe, file FileEntry, options Options) RenderContext {
 	// Merge variables: recipe vars + options vars + file vars
 	vars := make(map[string]any)
-	
+
 	// Start with recipe vars
 	for k, v := range recipe.Vars {
 		vars[k] = v
 	}
-	
+
 	// Override with options vars
 	for k, v := range options.Vars {
 		vars[k] = v
 	}
-	
+
 	// Override with file-specific vars
 	for k, v := range file.With {
 		vars[k] = v
 	}
-	
+
 	return RenderContext{
 		Vars:   vars,
 		File:   file,
@@ -244,19 +244,19 @@ func (tr *templateRenderer) writeFile(ctx context.Context, path string, content 
 	if err := ctx.Err(); err != nil {
 		return gerror.Wrap(err, gerror.ErrCodeCancelled, "context cancelled before writing file")
 	}
-	
+
 	// Create directory if needed
 	dir := filepath.Dir(path)
 	if err := tr.fileSystem.MkdirAll(dir, 0755); err != nil {
 		return gerror.Wrap(err, gerror.ErrCodeIO, "failed to create directory").
 			WithDetails("directory", dir)
 	}
-	
+
 	// Write file
 	if err := tr.fileSystem.WriteFile(path, content, 0644); err != nil {
 		return ErrFileWrite(path, err)
 	}
-	
+
 	return nil
 }
 
@@ -288,17 +288,17 @@ func NewTemplateCache(maxSize int, ttl time.Duration) *TemplateCache {
 func (tc *TemplateCache) Get(name string) *template.Template {
 	tc.mu.RLock()
 	defer tc.mu.RUnlock()
-	
+
 	entry, exists := tc.cache[name]
 	if !exists {
 		return nil
 	}
-	
+
 	// Check TTL
 	if time.Since(entry.timestamp) > tc.ttl {
 		return nil
 	}
-	
+
 	entry.hits++
 	return entry.template
 }
@@ -307,12 +307,12 @@ func (tc *TemplateCache) Get(name string) *template.Template {
 func (tc *TemplateCache) Set(name string, tmpl *template.Template) {
 	tc.mu.Lock()
 	defer tc.mu.Unlock()
-	
+
 	// Evict if at capacity
 	if len(tc.cache) >= tc.maxSize {
 		tc.evictLRU()
 	}
-	
+
 	tc.cache[name] = &templateCacheEntry{
 		template:  tmpl,
 		timestamp: time.Now(),
@@ -324,7 +324,7 @@ func (tc *TemplateCache) Set(name string, tmpl *template.Template) {
 func (tc *TemplateCache) Clear() {
 	tc.mu.Lock()
 	defer tc.mu.Unlock()
-	
+
 	tc.cache = make(map[string]*templateCacheEntry)
 }
 
@@ -332,14 +332,14 @@ func (tc *TemplateCache) Clear() {
 func (tc *TemplateCache) evictLRU() {
 	var oldestName string
 	var oldestTime time.Time = time.Now()
-	
+
 	for name, entry := range tc.cache {
 		if entry.timestamp.Before(oldestTime) {
 			oldestTime = entry.timestamp
 			oldestName = name
 		}
 	}
-	
+
 	if oldestName != "" {
 		delete(tc.cache, oldestName)
 	}
@@ -361,7 +361,7 @@ func getTemplateFuncMap() template.FuncMap {
 		"join": func(sep string, items []string) string {
 			return strings.Join(items, sep)
 		},
-		
+
 		// Utilities
 		"default": func(defaultVal, val any) any {
 			if val == nil || val == "" {
@@ -387,7 +387,7 @@ func getTemplateFuncMap() template.FuncMap {
 		"not": func(val bool) bool {
 			return !val
 		},
-		
+
 		// Type checking
 		"isString": func(val any) bool {
 			_, ok := val.(string)
@@ -401,14 +401,14 @@ func getTemplateFuncMap() template.FuncMap {
 			_, ok := val.([]any)
 			return ok
 		},
-		
+
 		// Path manipulation
-		"pathBase": filepath.Base,
-		"pathDir":  filepath.Dir,
-		"pathExt":  filepath.Ext,
-		"pathJoin": filepath.Join,
+		"pathBase":  filepath.Base,
+		"pathDir":   filepath.Dir,
+		"pathExt":   filepath.Ext,
+		"pathJoin":  filepath.Join,
 		"pathClean": filepath.Clean,
-		
+
 		// Date/time functions
 		"now": func() time.Time {
 			return time.Now()
@@ -419,7 +419,7 @@ func getTemplateFuncMap() template.FuncMap {
 		"dateISO": func() string {
 			return time.Now().Format(time.RFC3339)
 		},
-		
+
 		// Guild-specific functions
 		"campaignHash": func(name string) string {
 			// Generate a simple hash for campaign names
@@ -438,7 +438,7 @@ func getTemplateFuncMap() template.FuncMap {
 			}
 			return strings.Join(lines, "\n")
 		},
-		
+
 		// YAML/JSON functions
 		"toYAML": func(v any) string {
 			// Simple YAML serialization for basic types

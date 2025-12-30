@@ -87,12 +87,12 @@ func (e *ScaffoldError) WithCause(err error) *ScaffoldError {
 
 // ValidationError represents a validation failure
 type ValidationError struct {
-	Field   string               `json:"field"`
-	Message string               `json:"message"`
-	Value   any                  `json:"value,omitempty"`
-	Code    gerror.ErrorCode     `json:"code"`
-	Line    int                  `json:"line,omitempty"`
-	Column  int                  `json:"column,omitempty"`
+	Field   string           `json:"field"`
+	Message string           `json:"message"`
+	Value   any              `json:"value,omitempty"`
+	Code    gerror.ErrorCode `json:"code"`
+	Line    int              `json:"line,omitempty"`
+	Column  int              `json:"column,omitempty"`
 }
 
 // Error implements the error interface
@@ -105,7 +105,7 @@ func (ve ValidationError) Error() string {
 			location = fmt.Sprintf(" (line %d)", ve.Line)
 		}
 	}
-	
+
 	if ve.Value != nil {
 		return fmt.Sprintf("%s: %s (value: %v)%s", ve.Field, ve.Message, ve.Value, location)
 	}
@@ -123,14 +123,14 @@ func (ve ValidationErrors) Error() string {
 	if len(ve) == 1 {
 		return ve[0].Error()
 	}
-	
+
 	var buf strings.Builder
 	buf.WriteString(fmt.Sprintf("validation failed with %d errors:\n", len(ve)))
-	
+
 	for i, err := range ve {
 		buf.WriteString(fmt.Sprintf("  %d. %s\n", i+1, err.Error()))
 	}
-	
+
 	return buf.String()
 }
 
@@ -166,19 +166,19 @@ type EnhancedYAMLError struct {
 // Error implements the error interface
 func (e *EnhancedYAMLError) Error() string {
 	var buf strings.Builder
-	
+
 	if e.File != "" {
 		buf.WriteString(fmt.Sprintf("YAML parsing error in %s:\n", e.File))
 	} else {
 		buf.WriteString("YAML parsing error:\n")
 	}
-	
+
 	for _, msg := range e.EnhancedMessages {
 		buf.WriteString("  ")
 		buf.WriteString(msg)
 		buf.WriteString("\n")
 	}
-	
+
 	if len(e.LineContext) > 0 {
 		buf.WriteString("\nContext:\n")
 		for _, line := range e.LineContext {
@@ -187,7 +187,7 @@ func (e *EnhancedYAMLError) Error() string {
 			buf.WriteString("\n")
 		}
 	}
-	
+
 	return buf.String()
 }
 
@@ -208,8 +208,8 @@ func (e *SchemaValidationError) Error() string {
 	if e.Count == 1 {
 		return fmt.Sprintf("schema validation error: %s", e.Errors[0])
 	}
-	
-	return fmt.Sprintf("schema validation failed with %d errors:\n%s", 
+
+	return fmt.Sprintf("schema validation failed with %d errors:\n%s",
 		e.Count, strings.Join(e.Errors, "\n"))
 }
 

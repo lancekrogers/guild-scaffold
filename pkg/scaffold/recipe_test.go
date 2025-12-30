@@ -16,7 +16,7 @@ func TestRecipe_DefaultValues(t *testing.T) {
 			{Path: "test.txt", Template: "test.tmpl"},
 		},
 	}
-	
+
 	assert.Equal(t, "1.0.0", recipe.ScaffoldVersion)
 	assert.Equal(t, "templates", recipe.TemplatesDir)
 	assert.Len(t, recipe.Files, 1)
@@ -33,7 +33,7 @@ func TestFileEntry_WithVariables(t *testing.T) {
 			"port":     8080,
 		},
 	}
-	
+
 	assert.Equal(t, "config/app.yaml", file.Path)
 	assert.Equal(t, "app.yaml.tmpl", file.Template)
 	assert.Equal(t, "my-app", file.With["app_name"])
@@ -45,7 +45,7 @@ func TestOptions_DefaultBehavior(t *testing.T) {
 		Dest: "/tmp/test",
 		Dry:  false,
 	}
-	
+
 	assert.Equal(t, "/tmp/test", options.Dest)
 	assert.False(t, options.Dry)
 	assert.False(t, options.Overwrite)
@@ -68,7 +68,7 @@ func TestRenderContext_VariableMerging(t *testing.T) {
 			"shared":     "from_global",
 		},
 	}
-	
+
 	file := FileEntry{
 		Path:     "test.txt",
 		Template: "test.tmpl",
@@ -77,7 +77,7 @@ func TestRenderContext_VariableMerging(t *testing.T) {
 			"shared":   "from_file",
 		},
 	}
-	
+
 	context := RenderContext{
 		Vars: map[string]any{
 			"global_var": "global_value",
@@ -87,7 +87,7 @@ func TestRenderContext_VariableMerging(t *testing.T) {
 		File:   file,
 		Recipe: recipe,
 	}
-	
+
 	assert.Equal(t, "global_value", context.Vars["global_var"])
 	assert.Equal(t, "file_value", context.Vars["file_var"])
 	assert.Equal(t, "from_file", context.Vars["shared"]) // File override
@@ -97,7 +97,7 @@ func TestScaffoldStats_Initialization(t *testing.T) {
 	stats := &ScaffoldStats{
 		TotalFiles: 5,
 	}
-	
+
 	assert.Equal(t, 5, stats.TotalFiles)
 	assert.Equal(t, 0, stats.FilesGenerated)
 	assert.Equal(t, 0, stats.FilesSkipped)
@@ -129,18 +129,18 @@ func TestRecipe_ComplexVariables(t *testing.T) {
 			},
 		},
 	}
-	
+
 	// Test simple variables
 	assert.Equal(t, "hello", recipe.Vars["simple_string"])
 	assert.Equal(t, 42, recipe.Vars["number"])
 	assert.Equal(t, true, recipe.Vars["boolean"])
-	
+
 	// Test nested map
 	nestedMap, ok := recipe.Vars["nested_map"].(map[string]any)
 	require.True(t, ok, "nested_map should be a map[string]any")
 	assert.Equal(t, "inner_value", nestedMap["inner_key"])
 	assert.Equal(t, 123, nestedMap["inner_num"])
-	
+
 	// Test array
 	array, ok := recipe.Vars["array"].([]any)
 	require.True(t, ok, "array should be a []any")
@@ -148,14 +148,14 @@ func TestRecipe_ComplexVariables(t *testing.T) {
 	assert.Equal(t, "item1", array[0])
 	assert.Equal(t, "item2", array[1])
 	assert.Equal(t, "item3", array[2])
-	
+
 	// Test file-specific variables
 	assert.Equal(t, "file_specific", recipe.Files[0].With["override"])
 }
 
 func TestRecipe_EmptyInitialization(t *testing.T) {
 	recipe := Recipe{}
-	
+
 	assert.Empty(t, recipe.ScaffoldVersion)
 	assert.Empty(t, recipe.TemplatesDir)
 	assert.Nil(t, recipe.Vars)
@@ -168,7 +168,7 @@ func TestFileEntry_EmptyWith(t *testing.T) {
 		Template: "test.tmpl",
 		// With is not initialized
 	}
-	
+
 	assert.Equal(t, "test.txt", file.Path)
 	assert.Equal(t, "test.tmpl", file.Template)
 	assert.Nil(t, file.With)
@@ -184,9 +184,9 @@ func BenchmarkRecipe_VariableAccess(b *testing.B) {
 			"var5": "value5",
 		},
 	}
-	
+
 	b.ResetTimer()
-	
+
 	for i := 0; i < b.N; i++ {
 		_ = recipe.Vars["var3"]
 	}
@@ -200,9 +200,9 @@ func BenchmarkFileEntry_WithAccess(b *testing.B) {
 			"key3": "value3",
 		},
 	}
-	
+
 	b.ResetTimer()
-	
+
 	for i := 0; i < b.N; i++ {
 		_ = file.With["key2"]
 	}

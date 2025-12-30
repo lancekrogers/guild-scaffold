@@ -51,7 +51,7 @@ var initFlags InitFlags
 
 func init() {
 	// Add flags to the command
-	initCmd.Flags().StringVarP(&initFlags.Template, "template", "t", "", 
+	initCmd.Flags().StringVarP(&initFlags.Template, "template", "t", "",
 		"Template to use for initialization (default: auto-detect)")
 	initCmd.Flags().BoolVar(&initFlags.DryRun, "dry-run", false,
 		"Show what would be created without actually creating files")
@@ -78,24 +78,24 @@ func init() {
 // runInit executes the scaffold-enabled init command
 func runInit(cmd *cobra.Command, args []string) error {
 	ctx := cmd.Context()
-	
+
 	// Handle list templates request
 	if initFlags.ListTemplates {
 		return listAvailableTemplates(ctx)
 	}
-	
+
 	// Determine project name
 	projectName := "guild-project"
 	if len(args) > 0 {
 		projectName = args[0]
 	}
-	
+
 	// Create CLI options from flags
 	options, err := createCLIOptions(ctx, projectName)
 	if err != nil {
 		return gerror.Wrap(err, gerror.ErrCodeInternal, "failed to create CLI options")
 	}
-	
+
 	// Execute scaffolding through CLI package
 	return cli.ExecuteInit(ctx, options)
 }
@@ -108,7 +108,7 @@ func createCLIOptions(ctx context.Context, projectName string) (*cli.InitOptions
 		return nil, gerror.Wrap(err, gerror.ErrCodeInvalidInput, "invalid output directory").
 			WithDetails("path", initFlags.OutputDir)
 	}
-	
+
 	// Parse template variables
 	variables, err := parseVariables(initFlags.Variables)
 	if err != nil {
@@ -122,35 +122,35 @@ func createCLIOptions(ctx context.Context, projectName string) (*cli.InitOptions
 	if _, ok := variables["campaign_name"]; !ok {
 		variables["campaign_name"] = projectName
 	}
-	
+
 	// Determine template to use
 	templateName := initFlags.Template
 	if templateName == "" {
 		templateName = cli.DetectTemplateFromContext(ctx, outputDir)
 	}
-	
+
 	// Create options
 	options := &cli.InitOptions{
 		ProjectName:     projectName,
 		TemplateName:    templateName,
 		OutputDirectory: outputDir,
 		Variables:       variables,
-		DryRun:         initFlags.DryRun,
-		Force:          initFlags.Force,
-		ConfigFile:     initFlags.ConfigFile,
-		Provider:       initFlags.Provider,
-		Model:          initFlags.Model,
-		Interactive:    initFlags.Interactive,
-		Verbose:        initFlags.Verbose,
+		DryRun:          initFlags.DryRun,
+		Force:           initFlags.Force,
+		ConfigFile:      initFlags.ConfigFile,
+		Provider:        initFlags.Provider,
+		Model:           initFlags.Model,
+		Interactive:     initFlags.Interactive,
+		Verbose:         initFlags.Verbose,
 	}
-	
+
 	return options, nil
 }
 
 // parseVariables parses key=value variable assignments
 func parseVariables(varStrings []string) (map[string]interface{}, error) {
 	variables := make(map[string]interface{})
-	
+
 	for _, varStr := range varStrings {
 		parts := strings.SplitN(varStr, "=", 2)
 		if len(parts) != 2 {
@@ -158,19 +158,19 @@ func parseVariables(varStrings []string) (map[string]interface{}, error) {
 				WithDetails("variable", varStr).
 				WithDetails("expected_format", "key=value")
 		}
-		
+
 		key := strings.TrimSpace(parts[0])
 		value := strings.TrimSpace(parts[1])
-		
+
 		if key == "" {
 			return nil, gerror.New(gerror.ErrCodeInvalidInput, "variable key cannot be empty", nil).
 				WithDetails("variable", varStr)
 		}
-		
+
 		// Attempt to parse as different types
 		variables[key] = parseVariableValue(value)
 	}
-	
+
 	return variables, nil
 }
 
@@ -183,17 +183,17 @@ func parseVariableValue(value string) interface{} {
 	if value == "false" {
 		return false
 	}
-	
+
 	// Try integer
 	if intVal, err := strconv.Atoi(value); err == nil {
 		return intVal
 	}
-	
+
 	// Try float
 	if floatVal, err := strconv.ParseFloat(value, 64); err == nil {
 		return floatVal
 	}
-	
+
 	// Return as string
 	return value
 }

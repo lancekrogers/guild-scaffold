@@ -191,7 +191,7 @@ func TestOSFileSystem_AtomicWrite(t *testing.T) {
 	require.NoError(t, err)
 
 	for _, entry := range entries {
-		assert.False(t, 
+		assert.False(t,
 			filepath.HasPrefix(entry.Name(), ".tmp-scaffold-"),
 			"temporary file should not remain: %s", entry.Name(),
 		)

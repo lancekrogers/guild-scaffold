@@ -43,11 +43,11 @@ func init() {
 // runList executes the list templates command
 func runList(cmd *cobra.Command, args []string) error {
 	ctx := cmd.Context()
-	
+
 	options := &cli.ListOptions{
 		Verbose: listFlags.Verbose,
 		Format:  listFlags.Format,
 	}
-	
+
 	return cli.ListTemplatesWithOptions(ctx, options)
 }

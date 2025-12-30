@@ -41,21 +41,21 @@ func (opts *InitOptions) Validate() error {
 	if opts.ProjectName == "" {
 		return fmt.Errorf("project name cannot be empty")
 	}
-	
+
 	if opts.OutputDirectory == "" {
 		return fmt.Errorf("output directory cannot be empty")
 	}
-	
+
 	return nil
 }
 
-// Validate checks if the ListOptions are valid  
+// Validate checks if the ListOptions are valid
 func (opts *ListOptions) Validate() error {
 	validFormats := map[string]bool{"table": true, "json": true, "yaml": true}
 	if !validFormats[opts.Format] {
 		return fmt.Errorf("invalid format %q, must be one of: table, json, yaml", opts.Format)
 	}
-	
+
 	return nil
 }
 
@@ -64,12 +64,12 @@ func (opts *ValidateOptions) Validate() error {
 	if opts.ScaffoldPath == "" && opts.Template == "" {
 		return fmt.Errorf("must specify either scaffold path or template name")
 	}
-	
+
 	validFormats := map[string]bool{"text": true, "json": true, "yaml": true}
 	if !validFormats[opts.Format] {
 		return fmt.Errorf("invalid format %q, must be one of: text, json, yaml", opts.Format)
 	}
-	
+
 	return nil
 }
 
@@ -91,7 +91,7 @@ func (opts *InitOptions) GetStringVariable(key, defaultValue string) string {
 	return defaultValue
 }
 
-// GetBoolVariable retrieves a boolean variable with default  
+// GetBoolVariable retrieves a boolean variable with default
 func (opts *InitOptions) GetBoolVariable(key string, defaultValue bool) bool {
 	if value, exists := opts.Variables[key]; exists {
 		if b, ok := value.(bool); ok {

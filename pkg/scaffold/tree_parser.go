@@ -69,7 +69,7 @@ func (tp *TreeParser) ParseTreeFormat(data []byte) (*Recipe, error) {
 
 		// Remove trailing slash from root directory name
 		rootPath := strings.TrimSuffix(rootName, "/")
-		
+
 		if err := tp.processNode(rootPath, rootContent, recipe); err != nil {
 			return nil, gerror.Wrap(err, ErrCodeValidation, "failed to process tree structure").
 				WithDetails("path", rootPath)
@@ -107,7 +107,7 @@ func (tp *TreeParser) processNode(currentPath string, node interface{}, recipe *
 		if files, ok := v["_files"].(map[string]interface{}); ok {
 			for fileName, template := range files {
 				filePath := filepath.Join(currentPath, fileName)
-				
+
 				switch tmpl := template.(type) {
 				case string:
 					recipe.Files = append(recipe.Files, FileEntry{
@@ -121,15 +121,15 @@ func (tp *TreeParser) processNode(currentPath string, node interface{}, recipe *
 						Path: filePath,
 						With: make(map[string]any),
 					}
-					
+
 					if tmplStr, ok := tmpl["template"].(string); ok {
 						entry.Template = tmplStr
 					}
-					
+
 					if with, ok := tmpl["with"].(map[string]interface{}); ok {
 						entry.With = with
 					}
-					
+
 					recipe.Files = append(recipe.Files, entry)
 				default:
 					return fmt.Errorf("invalid template type for file %s", fileName)
@@ -147,7 +147,7 @@ func (tp *TreeParser) processNode(currentPath string, node interface{}, recipe *
 			// Remove trailing slash from directory names
 			dirName := strings.TrimSuffix(name, "/")
 			subPath := filepath.Join(currentPath, dirName)
-			
+
 			if err := tp.processNode(subPath, content, recipe); err != nil {
 				return err
 			}
@@ -201,7 +201,7 @@ func (tp *TreeParser) ConvertRecipeToTree(recipe *Recipe) (TreeFormat, error) {
 // addFileToTree adds a file entry to the tree structure
 func (tp *TreeParser) addFileToTree(tree TreeFormat, file FileEntry) {
 	parts := strings.Split(file.Path, string(filepath.Separator))
-	
+
 	// Navigate/create the tree structure
 	current := tree
 	for i, part := range parts {
@@ -210,9 +210,9 @@ func (tp *TreeParser) addFileToTree(tree TreeFormat, file FileEntry) {
 			if current["_files"] == nil {
 				current["_files"] = make(map[string]interface{})
 			}
-			
+
 			files := current["_files"].(map[string]interface{})
-			
+
 			// If file has custom properties, store as object
 			if len(file.With) > 0 {
 				files[part] = map[string]interface{}{
@@ -229,7 +229,7 @@ func (tp *TreeParser) addFileToTree(tree TreeFormat, file FileEntry) {
 			if current[dirName] == nil {
 				current[dirName] = make(map[string]interface{})
 			}
-			
+
 			// Move to next level
 			if next, ok := current[dirName].(map[string]interface{}); ok {
 				current = next

@@ -39,11 +39,11 @@ func init() {
 
 func main() {
 	ctx := context.Background()
-	
+
 	// Set up error handling
 	rootCmd.SilenceErrors = true
 	rootCmd.SilenceUsage = true
-	
+
 	if err := rootCmd.ExecuteContext(ctx); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)

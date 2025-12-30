@@ -68,10 +68,10 @@ func NewTestContainer(t *testing.T) (*TestContainer, error) {
 	}
 
 	req := testcontainers.ContainerRequest{
-		Image:        "alpine:latest",
-		Cmd:          []string{"sleep", "3600"}, // Keep container running
-		WaitingFor:   wait.ForExec([]string{"true"}).WithStartupTimeout(30 * time.Second),
-		AutoRemove:   true,
+		Image:      "alpine:latest",
+		Cmd:        []string{"sleep", "3600"}, // Keep container running
+		WaitingFor: wait.ForExec([]string{"true"}).WithStartupTimeout(30 * time.Second),
+		AutoRemove: true,
 		Mounts: testcontainers.ContainerMounts{
 			{
 				Source:   testcontainers.GenericBindMountSource{HostPath: scaffoldBinary},
@@ -583,4 +583,3 @@ func (tc *TestContainer) Reset() error {
 	}
 	return nil
 }
-
