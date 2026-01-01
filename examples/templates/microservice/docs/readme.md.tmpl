@@ -1,0 +1,73 @@
+# {{ .vars.service_name }} Documentation
+
+## Overview
+
+{{ .vars.description | default "Production-ready microservice built with Go." }}
+
+## Table of Contents
+
+- [Architecture](#architecture)
+- [API Reference](#api-reference)
+- [Configuration](#configuration)
+- [Deployment](#deployment)
+- [Development](#development)
+
+## Architecture
+
+See [ARCHITECTURE.md](./ARCHITECTURE.md) for detailed system design.
+
+## API Reference
+
+See [API.md](./API.md) for complete API documentation.
+
+### Quick Reference
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/health` | GET | Health check |
+| `/api/v1/resources` | GET | List resources |
+| `/api/v1/resources` | POST | Create resource |
+| `/api/v1/resources/{id}` | GET | Get resource |
+| `/api/v1/resources/{id}` | PUT | Update resource |
+| `/api/v1/resources/{id}` | DELETE | Delete resource |
+
+## Configuration
+
+Configuration is loaded from:
+1. `configs/config.yaml` - Base configuration
+2. `configs/config.{env}.yaml` - Environment-specific overrides
+3. Environment variables - Highest priority
+
+## Deployment
+
+### Docker
+
+```bash
+docker build -t {{ .vars.service_name | lower }} .
+docker run -p 8080:8080 {{ .vars.service_name | lower }}
+```
+
+### Kubernetes
+
+```bash
+kubectl apply -f deployments/kubernetes/
+```
+
+### Helm
+
+```bash
+helm install {{ .vars.service_name | lower }} deployments/helm/
+```
+
+## Development
+
+```bash
+# Run locally
+make dev
+
+# Run tests
+make test
+
+# Run with docker-compose
+docker-compose up
+```

@@ -1,0 +1,54 @@
+// Package handlers provides HTTP request handlers
+package handlers
+
+import (
+	"encoding/json"
+	"net/http"
+
+	"{{ .vars.module_path }}/internal/database"
+)
+
+type HealthHandler struct {
+	db *database.Postgres
+}
+
+func NewHealthHandler(db *database.Postgres) *HealthHandler {
+	return &HealthHandler{db: db}
+}
+
+type HealthResponse struct {
+	Status  string `json:"status"`
+	Version string `json:"version,omitempty"`
+}
+
+type ReadyResponse struct {
+	Status   string            `json:"status"`
+	Services map[string]string `json:"services"`
+}
+
+func (h *HealthHandler) Health(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, http.StatusOK, HealthResponse{
+		Status:  "ok",
+		Version: "{{ .vars.version | default "1.0.0" }}",
+	})
+}
+
+func (h *HealthHandler) Ready(w http.ResponseWriter, r *http.Request) {
+	services := make(map[string]string)
+
+	// Check database
+	if err := h.db.Ping(r.Context()); err != nil {
+		services["database"] = "unhealthy"
+		writeJSON(w, http.StatusServiceUnavailable, ReadyResponse{
+			Status:   "unhealthy",
+			Services: services,
+		})
+		return
+	}
+	services["database"] = "healthy"
+
+	writeJSON(w, http.StatusOK, ReadyResponse{
+		Status:   "ready",
+		Services: services,
+	})
+}

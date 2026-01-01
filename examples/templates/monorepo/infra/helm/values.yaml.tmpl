@@ -1,0 +1,119 @@
+# Default values for {{ .vars.project_name | lower }}-service
+# This is a YAML-formatted file.
+
+# Service configuration
+service:
+  name: {{ .vars.service_name | default "service" }}
+  port: 80
+  targetPort: 8080
+  type: ClusterIP
+
+# Deployment configuration
+replicaCount: 1
+
+image:
+  repository: {{ .vars.registry | default "registry.example.com" }}/{{ .vars.project_name | lower }}
+  pullPolicy: IfNotPresent
+  tag: ""
+
+imagePullSecrets: []
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "9090"
+  prometheus.io/path: "/metrics"
+
+podSecurityContext:
+  fsGroup: 1000
+
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 80
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+# Probes
+livenessProbe:
+  httpGet:
+    path: /health
+    port: http
+  initialDelaySeconds: 10
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /ready
+    port: http
+  initialDelaySeconds: 5
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 3
+
+# Environment variables
+env:
+  - name: ENVIRONMENT
+    value: "production"
+  - name: LOG_LEVEL
+    value: "info"
+
+# Config from ConfigMap
+envFrom:
+  - configMapRef:
+      name: {{ .vars.project_name | lower }}-config
+  - secretRef:
+      name: {{ .vars.project_name | lower }}-secrets
+
+# Ingress
+ingress:
+  enabled: false
+  className: nginx
+  annotations: {}
+  hosts:
+    - host: {{ .vars.service_name | default "service" }}.{{ .vars.domain | default "example.com" }}
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+# PostgreSQL (if using subchart)
+postgresql:
+  enabled: false
+  auth:
+    postgresPassword: ""
+    database: {{ .vars.project_name | lower }}
+
+# Redis (if using subchart)
+redis:
+  enabled: false
+  auth:
+    enabled: false

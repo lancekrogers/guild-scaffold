@@ -1,0 +1,87 @@
+// Database migration tool for {{ .vars.project_name }}
+package main
+
+import (
+	"context"
+	"embed"
+	"flag"
+	"fmt"
+	"log"
+	"os"
+	"time"
+
+	"{{ .vars.module_path }}/libs/database"
+)
+
+//go:embed migrations/*.sql
+var migrations embed.FS
+
+func main() {
+	var (
+		up     = flag.Bool("up", false, "Run migrations up")
+		down   = flag.Bool("down", false, "Rollback last migration")
+		create = flag.String("create", "", "Create new migration with given name")
+	)
+	flag.Parse()
+
+	dsn := os.Getenv("DATABASE_URL")
+	if dsn == "" {
+		log.Fatal("DATABASE_URL environment variable is required")
+	}
+
+	if *create != "" {
+		createMigration(*create)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
+
+	db, err := database.NewPostgresConnection(ctx, dsn)
+	if err != nil {
+		log.Fatalf("Failed to connect to database: %v", err)
+	}
+	defer db.Close()
+
+	migrator := database.NewMigrator(db, migrations)
+
+	switch {
+	case *up:
+		if err := migrator.Up(ctx); err != nil {
+			log.Fatalf("Migration up failed: %v", err)
+		}
+		fmt.Println("Migrations completed successfully")
+	case *down:
+		if err := migrator.Down(ctx); err != nil {
+			log.Fatalf("Migration down failed: %v", err)
+		}
+		fmt.Println("Rollback completed successfully")
+	default:
+		flag.Usage()
+	}
+}
+
+func createMigration(name string) {
+	timestamp := time.Now().Format("20060102150405")
+	baseName := fmt.Sprintf("migrations/%s_%s", timestamp, name)
+
+	upFile := baseName + ".up.sql"
+	downFile := baseName + ".down.sql"
+
+	if err := os.MkdirAll("migrations", 0755); err != nil {
+		log.Fatalf("Failed to create migrations directory: %v", err)
+	}
+
+	upContent := fmt.Sprintf("-- Migration: %s\n-- Created: %s\n\n-- Add your UP migration SQL here\n", name, time.Now().Format(time.RFC3339))
+	downContent := fmt.Sprintf("-- Rollback: %s\n-- Created: %s\n\n-- Add your DOWN migration SQL here\n", name, time.Now().Format(time.RFC3339))
+
+	if err := os.WriteFile(upFile, []byte(upContent), 0644); err != nil {
+		log.Fatalf("Failed to create up migration: %v", err)
+	}
+
+	if err := os.WriteFile(downFile, []byte(downContent), 0644); err != nil {
+		log.Fatalf("Failed to create down migration: %v", err)
+	}
+
+	fmt.Printf("Created migration files:\n  %s\n  %s\n", upFile, downFile)
+}

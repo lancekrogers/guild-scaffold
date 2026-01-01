@@ -1,0 +1,87 @@
+// Package common provides shared utilities across all services
+package common
+
+import (
+	"errors"
+	"fmt"
+)
+
+// Common error types
+var (
+	ErrNotFound       = errors.New("resource not found")
+	ErrUnauthorized   = errors.New("unauthorized")
+	ErrForbidden      = errors.New("forbidden")
+	ErrBadRequest     = errors.New("bad request")
+	ErrConflict       = errors.New("resource conflict")
+	ErrInternal       = errors.New("internal server error")
+	ErrTimeout        = errors.New("operation timeout")
+	ErrValidation     = errors.New("validation error")
+	ErrNotImplemented = errors.New("not implemented")
+)
+
+// AppError represents an application-level error with context
+type AppError struct {
+	Code    string
+	Message string
+	Err     error
+	Fields  map[string]interface{}
+}
+
+// Error implements the error interface
+func (e *AppError) Error() string {
+	if e.Err != nil {
+		return fmt.Sprintf("%s: %s: %v", e.Code, e.Message, e.Err)
+	}
+	return fmt.Sprintf("%s: %s", e.Code, e.Message)
+}
+
+// Unwrap returns the underlying error
+func (e *AppError) Unwrap() error {
+	return e.Err
+}
+
+// NewError creates a new AppError
+func NewError(code, message string) *AppError {
+	return &AppError{
+		Code:    code,
+		Message: message,
+		Fields:  make(map[string]interface{}),
+	}
+}
+
+// Wrap wraps an error with additional context
+func Wrap(err error, message string) *AppError {
+	return &AppError{
+		Code:    "WRAPPED",
+		Message: message,
+		Err:     err,
+		Fields:  make(map[string]interface{}),
+	}
+}
+
+// WithField adds a field to the error
+func (e *AppError) WithField(key string, value interface{}) *AppError {
+	e.Fields[key] = value
+	return e
+}
+
+// WithCode sets the error code
+func (e *AppError) WithCode(code string) *AppError {
+	e.Code = code
+	return e
+}
+
+// IsNotFound checks if error is a not found error
+func IsNotFound(err error) bool {
+	return errors.Is(err, ErrNotFound)
+}
+
+// IsUnauthorized checks if error is an unauthorized error
+func IsUnauthorized(err error) bool {
+	return errors.Is(err, ErrUnauthorized)
+}
+
+// IsForbidden checks if error is a forbidden error
+func IsForbidden(err error) bool {
+	return errors.Is(err, ErrForbidden)
+}

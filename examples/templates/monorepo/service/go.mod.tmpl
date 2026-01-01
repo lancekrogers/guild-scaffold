@@ -1,0 +1,17 @@
+module {{ .vars.module_path }}/services/{{ .vars.service_name | lower }}
+
+go {{ .vars.go_version | default "1.22" }}
+
+require (
+	{{ .vars.module_path }}/libs/common v0.0.0
+	{{ .vars.module_path }}/libs/database v0.0.0
+	{{ .vars.module_path }}/libs/messaging v0.0.0
+	{{ .vars.module_path }}/libs/auth v0.0.0
+)
+
+replace (
+	{{ .vars.module_path }}/libs/common => ../../libs/common
+	{{ .vars.module_path }}/libs/database => ../../libs/database
+	{{ .vars.module_path }}/libs/messaging => ../../libs/messaging
+	{{ .vars.module_path }}/libs/auth => ../../libs/auth
+)

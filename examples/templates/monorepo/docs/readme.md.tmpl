@@ -1,0 +1,49 @@
+# {{ .vars.project_name }} Documentation
+
+Welcome to the {{ .vars.project_name }} documentation.
+
+## Contents
+
+- [Architecture](ARCHITECTURE.md) - System architecture and design decisions
+- [Contributing](CONTRIBUTING.md) - How to contribute to the project
+- [API Documentation](api/) - API specifications for each service
+- [Service Documentation](services/) - Detailed documentation for each service
+
+## Quick Links
+
+### For Developers
+
+- [Development Setup](../scripts/setup-dev.sh) - Set up your local environment
+- [Testing Guide](TESTING.md) - How to run and write tests
+- [Debugging Guide](DEBUGGING.md) - Common debugging techniques
+
+### For Operators
+
+- [Deployment Guide](DEPLOYMENT.md) - How to deploy to various environments
+- [Monitoring Guide](MONITORING.md) - How to monitor the system
+- [Runbooks](runbooks/) - Operational procedures
+
+## Services
+
+| Service | Description | Port |
+|---------|-------------|------|
+| auth-service | Authentication and authorization | 8081 |
+| user-service | User management | 8082 |
+| order-service | Order processing | 8083 |
+| payment-service | Payment processing | 8084 |
+
+## Technology Stack
+
+- **Language**: Go {{ .vars.go_version | default "1.22" }}
+- **Database**: PostgreSQL 15
+- **Cache**: Redis 7
+- **Messaging**: Kafka / RabbitMQ
+- **Container**: Docker
+- **Orchestration**: Kubernetes
+- **CI/CD**: GitHub Actions / GitLab CI
+
+## Need Help?
+
+- Check the [FAQ](FAQ.md)
+- Open an issue on GitHub
+- Contact the platform team

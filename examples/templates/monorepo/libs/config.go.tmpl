@@ -1,0 +1,98 @@
+// Package common provides shared utilities across all services
+package common
+
+import (
+	"os"
+	"strconv"
+	"time"
+)
+
+// Config holds application configuration
+type Config struct {
+	// Server
+	Port         string
+	Environment  string
+	ServiceName  string
+
+	// Database
+	DatabaseURL  string
+	DatabasePool int
+
+	// Cache
+	RedisURL     string
+	CacheTTL     time.Duration
+
+	// Messaging
+	KafkaBrokers string
+	RabbitMQURL  string
+
+	// Auth
+	JWTSecret    string
+	JWTExpiry    time.Duration
+
+	// Observability
+	LogLevel       string
+	MetricsEnabled bool
+	TracingEnabled bool
+	JaegerEndpoint string
+}
+
+// LoadConfig loads configuration from environment variables
+func LoadConfig() (*Config, error) {
+	return &Config{
+		Port:           getEnv("PORT", "8080"),
+		Environment:    getEnv("ENVIRONMENT", "development"),
+		ServiceName:    getEnv("SERVICE_NAME", "{{ .vars.project_name | lower }}"),
+
+		DatabaseURL:    getEnv("DATABASE_URL", "postgres://localhost:5432/{{ .vars.project_name | lower }}?sslmode=disable"),
+		DatabasePool:   getEnvAsInt("DATABASE_POOL", 10),
+
+		RedisURL:       getEnv("REDIS_URL", "redis://localhost:6379"),
+		CacheTTL:       getEnvAsDuration("CACHE_TTL", 1*time.Hour),
+
+		KafkaBrokers:   getEnv("KAFKA_BROKERS", "localhost:9092"),
+		RabbitMQURL:    getEnv("RABBITMQ_URL", "amqp://guest:guest@localhost:5672/"),
+
+		JWTSecret:      getEnv("JWT_SECRET", ""),
+		JWTExpiry:      getEnvAsDuration("JWT_EXPIRY", 24*time.Hour),
+
+		LogLevel:       getEnv("LOG_LEVEL", "info"),
+		MetricsEnabled: getEnvAsBool("METRICS_ENABLED", true),
+		TracingEnabled: getEnvAsBool("TRACING_ENABLED", false),
+		JaegerEndpoint: getEnv("JAEGER_ENDPOINT", "http://localhost:14268/api/traces"),
+	}, nil
+}
+
+func getEnv(key, defaultValue string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return defaultValue
+}
+
+func getEnvAsInt(key string, defaultValue int) int {
+	if value := os.Getenv(key); value != "" {
+		if i, err := strconv.Atoi(value); err == nil {
+			return i
+		}
+	}
+	return defaultValue
+}
+
+func getEnvAsBool(key string, defaultValue bool) bool {
+	if value := os.Getenv(key); value != "" {
+		if b, err := strconv.ParseBool(value); err == nil {
+			return b
+		}
+	}
+	return defaultValue
+}
+
+func getEnvAsDuration(key string, defaultValue time.Duration) time.Duration {
+	if value := os.Getenv(key); value != "" {
+		if d, err := time.ParseDuration(value); err == nil {
+			return d
+		}
+	}
+	return defaultValue
+}

@@ -1,0 +1,71 @@
+stages:
+  - test
+  - build
+  - deploy
+
+variables:
+  DOCKER_IMAGE: $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA
+  GO_VERSION: "1.22"
+
+.go-cache:
+  cache:
+    key: go-modules
+    paths:
+      - .go/pkg/mod/
+  before_script:
+    - export GOPATH=$CI_PROJECT_DIR/.go
+    - export PATH=$PATH:$GOPATH/bin
+
+test:
+  stage: test
+  image: golang:${GO_VERSION}
+  extends: .go-cache
+  services:
+    - postgres:16
+    - redis:7
+  variables:
+    POSTGRES_DB: test
+    POSTGRES_USER: test
+    POSTGRES_PASSWORD: test
+    DATABASE_URL: postgres://test:test@postgres:5432/test?sslmode=disable
+    REDIS_URL: redis://redis:6379
+  script:
+    - go mod download
+    - go test -v -race -coverprofile=coverage.out ./...
+    - go tool cover -func=coverage.out
+  coverage: '/total:\s+\(statements\)\s+(\d+.\d+)%/'
+  artifacts:
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.out
+
+lint:
+  stage: test
+  image: golangci/golangci-lint:latest
+  script:
+    - golangci-lint run
+
+build:
+  stage: build
+  image: docker:24
+  services:
+    - docker:24-dind
+  script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+    - docker build -t $DOCKER_IMAGE -f deployments/docker/Dockerfile .
+    - docker push $DOCKER_IMAGE
+  only:
+    - main
+    - tags
+
+deploy:
+  stage: deploy
+  image: bitnami/kubectl:latest
+  script:
+    - kubectl set image deployment/{{ .vars.service_name | lower }} {{ .vars.service_name | lower }}=$DOCKER_IMAGE
+  environment:
+    name: production
+  only:
+    - tags
+  when: manual

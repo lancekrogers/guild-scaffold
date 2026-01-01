@@ -1,0 +1,66 @@
+// Package domain contains business entities
+package domain
+
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
+
+// Entity represents a domain entity
+type Entity struct {
+	ID        uuid.UUID         `json:"id"`
+	Name      string            `json:"name"`
+	Metadata  map[string]string `json:"metadata,omitempty"`
+	CreatedAt time.Time         `json:"created_at"`
+	UpdatedAt time.Time         `json:"updated_at"`
+}
+
+// NewEntity creates a new entity with generated ID
+func NewEntity(name string) *Entity {
+	now := time.Now()
+	return &Entity{
+		ID:        uuid.New(),
+		Name:      name,
+		Metadata:  make(map[string]string),
+		CreatedAt: now,
+		UpdatedAt: now,
+	}
+}
+
+// SetMetadata adds or updates metadata
+func (e *Entity) SetMetadata(key, value string) {
+	if e.Metadata == nil {
+		e.Metadata = make(map[string]string)
+	}
+	e.Metadata[key] = value
+	e.UpdatedAt = time.Now()
+}
+
+// Validate validates the entity
+func (e *Entity) Validate() error {
+	if e.Name == "" {
+		return ErrNameRequired
+	}
+	return nil
+}
+
+// Domain errors
+var (
+	ErrNotFound     = NewDomainError("entity not found")
+	ErrNameRequired = NewDomainError("name is required")
+	ErrInvalidID    = NewDomainError("invalid entity ID")
+)
+
+// DomainError represents a domain-level error
+type DomainError struct {
+	Message string
+}
+
+func NewDomainError(msg string) *DomainError {
+	return &DomainError{Message: msg}
+}
+
+func (e *DomainError) Error() string {
+	return e.Message
+}

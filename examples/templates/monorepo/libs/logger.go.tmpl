@@ -1,0 +1,125 @@
+// Package common provides shared utilities across all services
+package common
+
+import (
+	"context"
+	"encoding/json"
+	"io"
+	"os"
+	"time"
+)
+
+// LogLevel represents the severity of a log message
+type LogLevel string
+
+const (
+	LogLevelDebug LogLevel = "DEBUG"
+	LogLevelInfo  LogLevel = "INFO"
+	LogLevelWarn  LogLevel = "WARN"
+	LogLevelError LogLevel = "ERROR"
+)
+
+// Logger provides structured logging
+type Logger struct {
+	service string
+	output  io.Writer
+	level   LogLevel
+}
+
+// LogEntry represents a single log entry
+type LogEntry struct {
+	Timestamp string                 `json:"timestamp"`
+	Level     LogLevel               `json:"level"`
+	Service   string                 `json:"service"`
+	Message   string                 `json:"message"`
+	Fields    map[string]interface{} `json:"fields,omitempty"`
+	TraceID   string                 `json:"trace_id,omitempty"`
+}
+
+// NewLogger creates a new Logger instance
+func NewLogger(service string) *Logger {
+	level := LogLevelInfo
+	if lvl := os.Getenv("LOG_LEVEL"); lvl != "" {
+		level = LogLevel(lvl)
+	}
+	return &Logger{
+		service: service,
+		output:  os.Stdout,
+		level:   level,
+	}
+}
+
+// WithOutput sets a custom output writer
+func (l *Logger) WithOutput(w io.Writer) *Logger {
+	l.output = w
+	return l
+}
+
+// WithLevel sets the minimum log level
+func (l *Logger) WithLevel(level LogLevel) *Logger {
+	l.level = level
+	return l
+}
+
+// Debug logs a debug message
+func (l *Logger) Debug(ctx context.Context, msg string, fields ...interface{}) {
+	if l.shouldLog(LogLevelDebug) {
+		l.log(ctx, LogLevelDebug, msg, fields...)
+	}
+}
+
+// Info logs an info message
+func (l *Logger) Info(ctx context.Context, msg string, fields ...interface{}) {
+	if l.shouldLog(LogLevelInfo) {
+		l.log(ctx, LogLevelInfo, msg, fields...)
+	}
+}
+
+// Warn logs a warning message
+func (l *Logger) Warn(ctx context.Context, msg string, fields ...interface{}) {
+	if l.shouldLog(LogLevelWarn) {
+		l.log(ctx, LogLevelWarn, msg, fields...)
+	}
+}
+
+// Error logs an error message
+func (l *Logger) Error(ctx context.Context, msg string, fields ...interface{}) {
+	if l.shouldLog(LogLevelError) {
+		l.log(ctx, LogLevelError, msg, fields...)
+	}
+}
+
+func (l *Logger) shouldLog(level LogLevel) bool {
+	levels := map[LogLevel]int{
+		LogLevelDebug: 0,
+		LogLevelInfo:  1,
+		LogLevelWarn:  2,
+		LogLevelError: 3,
+	}
+	return levels[level] >= levels[l.level]
+}
+
+func (l *Logger) log(ctx context.Context, level LogLevel, msg string, fields ...interface{}) {
+	entry := LogEntry{
+		Timestamp: time.Now().UTC().Format(time.RFC3339),
+		Level:     level,
+		Service:   l.service,
+		Message:   msg,
+		Fields:    make(map[string]interface{}),
+	}
+
+	// Extract trace ID from context if available
+	if traceID, ok := ctx.Value("trace_id").(string); ok {
+		entry.TraceID = traceID
+	}
+
+	// Parse variadic fields as key-value pairs
+	for i := 0; i+1 < len(fields); i += 2 {
+		if key, ok := fields[i].(string); ok {
+			entry.Fields[key] = fields[i+1]
+		}
+	}
+
+	data, _ := json.Marshal(entry)
+	l.output.Write(append(data, '\n'))
+}

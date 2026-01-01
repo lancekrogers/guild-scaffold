@@ -1,0 +1,145 @@
+// Package handlers provides HTTP request handlers
+package handlers
+
+import (
+	"encoding/json"
+	"net/http"
+
+	"{{ .vars.module_path }}/internal/models"
+	"{{ .vars.module_path }}/internal/services"
+)
+
+type AuthHandler struct {
+	auth  *services.AuthService
+	user  *services.UserService
+	email *services.EmailService
+}
+
+func NewAuthHandler(auth *services.AuthService, user *services.UserService, email *services.EmailService) *AuthHandler {
+	return &AuthHandler{auth: auth, user: user, email: email}
+}
+
+type RegisterRequest struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+	Name     string `json:"name"`
+}
+
+type LoginRequest struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+type AuthResponse struct {
+	User         *models.User `json:"user"`
+	AccessToken  string       `json:"access_token"`
+	RefreshToken string       `json:"refresh_token"`
+}
+
+func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
+	var req RegisterRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	// Validate input
+	if req.Email == "" || req.Password == "" {
+		http.Error(w, "Email and password are required", http.StatusBadRequest)
+		return
+	}
+
+	// Create user
+	user, err := h.user.Create(r.Context(), req.Email, req.Password, req.Name)
+	if err != nil {
+		if err == services.ErrUserExists {
+			http.Error(w, "User already exists", http.StatusConflict)
+			return
+		}
+		http.Error(w, "Failed to create user", http.StatusInternalServerError)
+		return
+	}
+
+	// Generate tokens
+	accessToken, refreshToken, err := h.auth.GenerateTokens(user)
+	if err != nil {
+		http.Error(w, "Failed to generate tokens", http.StatusInternalServerError)
+		return
+	}
+
+	// Send welcome email
+	go h.email.SendWelcome(user.Email, user.Name)
+
+	writeJSON(w, http.StatusCreated, AuthResponse{
+		User:         user,
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+	})
+}
+
+func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
+	var req LoginRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	// Authenticate user
+	user, err := h.auth.Authenticate(r.Context(), req.Email, req.Password)
+	if err != nil {
+		if err == services.ErrInvalidCredentials {
+			http.Error(w, "Invalid email or password", http.StatusUnauthorized)
+			return
+		}
+		http.Error(w, "Authentication failed", http.StatusInternalServerError)
+		return
+	}
+
+	// Generate tokens
+	accessToken, refreshToken, err := h.auth.GenerateTokens(user)
+	if err != nil {
+		http.Error(w, "Failed to generate tokens", http.StatusInternalServerError)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, AuthResponse{
+		User:         user,
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+	})
+}
+
+func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
+	// Invalidate refresh token
+	token := r.Header.Get("X-Refresh-Token")
+	if token != "" {
+		h.auth.RevokeToken(r.Context(), token)
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
+	token := r.Header.Get("X-Refresh-Token")
+	if token == "" {
+		http.Error(w, "Refresh token required", http.StatusBadRequest)
+		return
+	}
+
+	user, accessToken, refreshToken, err := h.auth.RefreshTokens(r.Context(), token)
+	if err != nil {
+		http.Error(w, "Invalid refresh token", http.StatusUnauthorized)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, AuthResponse{
+		User:         user,
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+	})
+}
+
+func writeJSON(w http.ResponseWriter, status int, data interface{}) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	json.NewEncoder(w).Encode(data)
+}

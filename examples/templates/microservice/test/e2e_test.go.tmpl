@@ -1,0 +1,54 @@
+package test
+
+import (
+	"context"
+	"net/http"
+	"os"
+	"testing"
+	"time"
+)
+
+// E2E tests require a running service
+// Run with: go test -tags=e2e ./test/...
+
+func TestE2E_HealthCheck(t *testing.T) {
+	if os.Getenv("E2E_TEST") != "true" {
+		t.Skip("Skipping E2E test; set E2E_TEST=true to run")
+	}
+
+	baseURL := os.Getenv("SERVICE_URL")
+	if baseURL == "" {
+		baseURL = "http://localhost:8080"
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, "GET", baseURL+"/health", nil)
+	if err != nil {
+		t.Fatalf("failed to create request: %v", err)
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("request failed: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("expected status 200, got %d", resp.StatusCode)
+	}
+}
+
+func TestE2E_CRUD(t *testing.T) {
+	if os.Getenv("E2E_TEST") != "true" {
+		t.Skip("Skipping E2E test; set E2E_TEST=true to run")
+	}
+
+	// TODO: Implement full CRUD E2E test
+	// 1. Create a resource
+	// 2. Get the resource
+	// 3. Update the resource
+	// 4. Delete the resource
+	// 5. Verify deletion
+}

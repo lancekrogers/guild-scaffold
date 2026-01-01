@@ -1,0 +1,124 @@
+#!/bin/bash
+# Run all tests for {{ .vars.project_name }}
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="$(dirname "$SCRIPT_DIR")"
+
+# Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m'
+
+# Options
+COVERAGE="${COVERAGE:-false}"
+RACE="${RACE:-true}"
+VERBOSE="${VERBOSE:-false}"
+INTEGRATION="${INTEGRATION:-false}"
+
+# Parse arguments
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --coverage)
+            COVERAGE=true
+            shift
+            ;;
+        --no-race)
+            RACE=false
+            shift
+            ;;
+        --verbose|-v)
+            VERBOSE=true
+            shift
+            ;;
+        --integration)
+            INTEGRATION=true
+            shift
+            ;;
+        *)
+            echo "Unknown option: $1"
+            exit 1
+            ;;
+    esac
+done
+
+echo -e "${GREEN}Running tests for {{ .vars.project_name }}${NC}"
+echo ""
+
+# Build test flags
+TEST_FLAGS=""
+if [[ "$RACE" == "true" ]]; then
+    TEST_FLAGS="$TEST_FLAGS -race"
+fi
+if [[ "$VERBOSE" == "true" ]]; then
+    TEST_FLAGS="$TEST_FLAGS -v"
+fi
+if [[ "$COVERAGE" == "true" ]]; then
+    TEST_FLAGS="$TEST_FLAGS -coverprofile=coverage.out -covermode=atomic"
+fi
+
+# Test shared libraries first
+echo "Testing shared libraries..."
+for lib in common database messaging auth; do
+    lib_dir="${ROOT_DIR}/libs/${lib}"
+    if [[ -d "$lib_dir" ]]; then
+        echo -e "  Testing libs/${lib}..."
+        cd "$lib_dir"
+        go test $TEST_FLAGS ./...
+    fi
+done
+
+# Test services
+echo ""
+echo "Testing services..."
+for service in auth-service user-service order-service payment-service; do
+    service_dir="${ROOT_DIR}/services/${service}"
+    if [[ -d "$service_dir" ]]; then
+        echo -e "  Testing services/${service}..."
+        cd "$service_dir"
+        go test $TEST_FLAGS ./...
+    fi
+done
+
+# Test tools
+echo ""
+echo "Testing tools..."
+for tool in migrator seeder cli; do
+    tool_dir="${ROOT_DIR}/tools/${tool}"
+    if [[ -d "$tool_dir" ]]; then
+        echo -e "  Testing tools/${tool}..."
+        cd "$tool_dir"
+        go test $TEST_FLAGS ./...
+    fi
+done
+
+# Run integration tests if requested
+if [[ "$INTEGRATION" == "true" ]]; then
+    echo ""
+    echo -e "${YELLOW}Running integration tests...${NC}"
+    cd "$ROOT_DIR"
+    E2E_TEST=true go test -tags=integration $TEST_FLAGS ./...
+fi
+
+# Generate coverage report
+if [[ "$COVERAGE" == "true" ]]; then
+    echo ""
+    echo "Generating coverage report..."
+    cd "$ROOT_DIR"
+
+    # Merge coverage files
+    echo "mode: atomic" > coverage-merged.out
+    find . -name "coverage.out" -exec tail -n +2 {} \; >> coverage-merged.out
+
+    # Generate HTML report
+    go tool cover -html=coverage-merged.out -o coverage.html
+
+    # Print summary
+    COVERAGE_PCT=$(go tool cover -func=coverage-merged.out | grep total | awk '{print $3}')
+    echo -e "${GREEN}Total coverage: ${COVERAGE_PCT}${NC}"
+    echo "HTML report: ${ROOT_DIR}/coverage.html"
+fi
+
+echo ""
+echo -e "${GREEN}All tests passed!${NC}"

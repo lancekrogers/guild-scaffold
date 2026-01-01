@@ -1,0 +1,140 @@
+// Package app contains HTTP handlers
+package app
+
+import (
+	"encoding/json"
+	"net/http"
+
+	"{{ .vars.module_path }}/internal/domain"
+	"github.com/google/uuid"
+)
+
+// HTTPHandler handles HTTP requests
+type HTTPHandler struct {
+	service *domain.Service
+}
+
+// NewHTTPHandler creates a new HTTP handler
+func NewHTTPHandler(service *domain.Service) *HTTPHandler {
+	return &HTTPHandler{service: service}
+}
+
+// RegisterRoutes registers HTTP routes
+func (h *HTTPHandler) RegisterRoutes(mux *http.ServeMux) {
+	mux.HandleFunc("GET /api/v1/resources", h.List)
+	mux.HandleFunc("POST /api/v1/resources", h.Create)
+	mux.HandleFunc("GET /api/v1/resources/{id}", h.Get)
+	mux.HandleFunc("PUT /api/v1/resources/{id}", h.Update)
+	mux.HandleFunc("DELETE /api/v1/resources/{id}", h.Delete)
+}
+
+// List handles GET /api/v1/resources
+func (h *HTTPHandler) List(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	opts := domain.DefaultListOptions()
+
+	entities, nextToken, err := h.service.List(ctx, opts)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	respondJSON(w, http.StatusOK, map[string]interface{}{
+		"items":           entities,
+		"next_page_token": nextToken,
+	})
+}
+
+// Create handles POST /api/v1/resources
+func (h *HTTPHandler) Create(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	var req struct {
+		Name     string            `json:"name"`
+		Metadata map[string]string `json:"metadata"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	entity, err := h.service.Create(ctx, req.Name, req.Metadata)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	respondJSON(w, http.StatusCreated, entity)
+}
+
+// Get handles GET /api/v1/resources/{id}
+func (h *HTTPHandler) Get(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	id, err := uuid.Parse(r.PathValue("id"))
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "invalid ID")
+		return
+	}
+
+	entity, err := h.service.Get(ctx, id)
+	if err != nil {
+		respondError(w, http.StatusNotFound, "not found")
+		return
+	}
+
+	respondJSON(w, http.StatusOK, entity)
+}
+
+// Update handles PUT /api/v1/resources/{id}
+func (h *HTTPHandler) Update(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	id, err := uuid.Parse(r.PathValue("id"))
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "invalid ID")
+		return
+	}
+
+	var req struct {
+		Name     string            `json:"name"`
+		Metadata map[string]string `json:"metadata"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	entity, err := h.service.Update(ctx, id, req.Name, req.Metadata)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	respondJSON(w, http.StatusOK, entity)
+}
+
+// Delete handles DELETE /api/v1/resources/{id}
+func (h *HTTPHandler) Delete(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	id, err := uuid.Parse(r.PathValue("id"))
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "invalid ID")
+		return
+	}
+
+	if err := h.service.Delete(ctx, id); err != nil {
+		respondError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func respondJSON(w http.ResponseWriter, status int, data interface{}) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	json.NewEncoder(w).Encode(data)
+}
+
+func respondError(w http.ResponseWriter, status int, message string) {
+	respondJSON(w, status, map[string]string{"error": message})
+}

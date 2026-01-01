@@ -1,0 +1,44 @@
+# {{ .vars.project_name }} Makefile
+
+.PHONY: all build run test clean dev help
+
+# Variables
+APP_NAME := {{ .vars.project_name | lower }}
+BUILD_DIR := bin
+SRC_DIR := src
+
+# Default target
+all: build
+
+# Build the application
+build:
+	@echo "Building $(APP_NAME)..."
+	@mkdir -p $(BUILD_DIR)
+	@go build -o $(BUILD_DIR)/$(APP_NAME) ./$(SRC_DIR)/...
+
+# Run the application
+run: build
+	@./$(BUILD_DIR)/$(APP_NAME)
+
+# Run in development mode
+dev:
+	@go run ./$(SRC_DIR)/...
+
+# Run tests
+test:
+	@go test -v ./...
+
+# Clean build artifacts
+clean:
+	@echo "Cleaning..."
+	@rm -rf $(BUILD_DIR)
+
+# Show help
+help:
+	@echo "Available targets:"
+	@echo "  build  - Build the application"
+	@echo "  run    - Build and run the application"
+	@echo "  dev    - Run in development mode"
+	@echo "  test   - Run tests"
+	@echo "  clean  - Clean build artifacts"
+	@echo "  help   - Show this help"

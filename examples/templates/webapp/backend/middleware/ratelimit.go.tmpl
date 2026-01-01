@@ -1,0 +1,123 @@
+// Package middleware provides HTTP middleware functions
+package middleware
+
+import (
+	"net/http"
+	"sync"
+	"time"
+)
+
+// rateLimiter tracks request rates per IP
+type rateLimiter struct {
+	mu       sync.RWMutex
+	requests map[string][]time.Time
+	limit    int
+	window   time.Duration
+}
+
+func newRateLimiter(limit int, window time.Duration) *rateLimiter {
+	rl := &rateLimiter{
+		requests: make(map[string][]time.Time),
+		limit:    limit,
+		window:   window,
+	}
+
+	// Cleanup old entries periodically
+	go func() {
+		for range time.Tick(window) {
+			rl.cleanup()
+		}
+	}()
+
+	return rl
+}
+
+func (rl *rateLimiter) allow(ip string) bool {
+	rl.mu.Lock()
+	defer rl.mu.Unlock()
+
+	now := time.Now()
+	windowStart := now.Add(-rl.window)
+
+	// Filter requests within the window
+	var recent []time.Time
+	for _, t := range rl.requests[ip] {
+		if t.After(windowStart) {
+			recent = append(recent, t)
+		}
+	}
+
+	// Check if limit exceeded
+	if len(recent) >= rl.limit {
+		return false
+	}
+
+	// Record new request
+	rl.requests[ip] = append(recent, now)
+	return true
+}
+
+func (rl *rateLimiter) cleanup() {
+	rl.mu.Lock()
+	defer rl.mu.Unlock()
+
+	now := time.Now()
+	windowStart := now.Add(-rl.window)
+
+	for ip, times := range rl.requests {
+		var recent []time.Time
+		for _, t := range times {
+			if t.After(windowStart) {
+				recent = append(recent, t)
+			}
+		}
+		if len(recent) == 0 {
+			delete(rl.requests, ip)
+		} else {
+			rl.requests[ip] = recent
+		}
+	}
+}
+
+// RateLimit middleware limits requests per IP
+func RateLimit(limit int, window time.Duration) func(http.Handler) http.Handler {
+	rl := newRateLimiter(limit, window)
+
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ip := r.RemoteAddr
+			if forwarded := r.Header.Get("X-Forwarded-For"); forwarded != "" {
+				ip = forwarded
+			}
+
+			if !rl.allow(ip) {
+				http.Error(w, "Rate limit exceeded", http.StatusTooManyRequests)
+				return
+			}
+
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+// Chain applies multiple middleware to a handler
+func Chain(h http.Handler, middleware ...func(http.Handler) http.Handler) http.Handler {
+	for i := len(middleware) - 1; i >= 0; i-- {
+		h = middleware[i](h)
+	}
+	return h
+}
+
+// Recover middleware recovers from panics
+func Recover() func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			defer func() {
+				if err := recover(); err != nil {
+					http.Error(w, "Internal server error", http.StatusInternalServerError)
+				}
+			}()
+			next.ServeHTTP(w, r)
+		})
+	}
+}

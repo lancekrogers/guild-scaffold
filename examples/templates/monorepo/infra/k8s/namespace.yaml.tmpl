@@ -1,0 +1,47 @@
+# Kubernetes Namespace for {{ .vars.project_name }}
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ .vars.project_name | lower }}
+  labels:
+    app.kubernetes.io/name: {{ .vars.project_name | lower }}
+    app.kubernetes.io/managed-by: kubectl
+---
+# Resource Quota
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: {{ .vars.project_name | lower }}-quota
+  namespace: {{ .vars.project_name | lower }}
+spec:
+  hard:
+    requests.cpu: "10"
+    requests.memory: 20Gi
+    limits.cpu: "20"
+    limits.memory: 40Gi
+    pods: "100"
+    services: "20"
+    secrets: "50"
+    configmaps: "50"
+---
+# Limit Range
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: {{ .vars.project_name | lower }}-limits
+  namespace: {{ .vars.project_name | lower }}
+spec:
+  limits:
+    - default:
+        cpu: "500m"
+        memory: "512Mi"
+      defaultRequest:
+        cpu: "100m"
+        memory: "128Mi"
+      max:
+        cpu: "2"
+        memory: "4Gi"
+      min:
+        cpu: "50m"
+        memory: "64Mi"
+      type: Container

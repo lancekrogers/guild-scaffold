@@ -1,0 +1,58 @@
+// {{ .vars.service_name }} Worker
+package main
+
+import (
+	"context"
+	"os"
+	"os/signal"
+	"syscall"
+
+	"{{ .vars.module_path }}/internal/infrastructure/messaging"
+	"{{ .vars.module_path }}/observability"
+)
+
+func main() {
+	// Initialize logger
+	logger := observability.NewLogger()
+	logger.Info("Starting {{ .vars.service_name }} worker...")
+
+	// Load configuration
+	cfg, err := LoadConfig()
+	if err != nil {
+		logger.Fatal("Failed to load config", "error", err)
+	}
+
+	// Initialize message consumer
+	consumer, err := messaging.NewKafkaConsumer(cfg.KafkaBrokers, cfg.ConsumerGroup)
+	if err != nil {
+		logger.Fatal("Failed to create consumer", "error", err)
+	}
+	defer consumer.Close()
+
+	// Create context with cancellation
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Handle shutdown
+	done := make(chan os.Signal, 1)
+	signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
+
+	// Start processing
+	go func() {
+		logger.Info("Worker started, consuming messages...")
+		if err := consumer.Consume(ctx, cfg.Topics, handleMessage); err != nil {
+			logger.Error("Consumer error", "error", err)
+		}
+	}()
+
+	<-done
+	logger.Info("Shutting down worker...")
+	cancel()
+	logger.Info("Worker stopped")
+}
+
+func handleMessage(ctx context.Context, msg *messaging.Message) error {
+	// Process message
+	// TODO: Implement message handling logic
+	return nil
+}

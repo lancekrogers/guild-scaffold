@@ -1,0 +1,80 @@
+// Package infra implements Redis caching
+package infra
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"time"
+
+	"github.com/redis/go-redis/v9"
+)
+
+// RedisCache implements caching with Redis
+type RedisCache struct {
+	client *redis.Client
+	prefix string
+}
+
+// NewRedisCache creates a new Redis cache
+func NewRedisCache(addr, password string, db int, prefix string) (*RedisCache, error) {
+	client := redis.NewClient(&redis.Options{
+		Addr:     addr,
+		Password: password,
+		DB:       db,
+	})
+
+	// Verify connection
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := client.Ping(ctx).Err(); err != nil {
+		return nil, fmt.Errorf("failed to connect to Redis: %w", err)
+	}
+
+	return &RedisCache{
+		client: client,
+		prefix: prefix,
+	}, nil
+}
+
+// Get retrieves a value from cache
+func (c *RedisCache) Get(ctx context.Context, key string, dest interface{}) error {
+	val, err := c.client.Get(ctx, c.key(key)).Bytes()
+	if err != nil {
+		if err == redis.Nil {
+			return ErrCacheMiss
+		}
+		return err
+	}
+	return json.Unmarshal(val, dest)
+}
+
+// Set stores a value in cache
+func (c *RedisCache) Set(ctx context.Context, key string, value interface{}, ttl time.Duration) error {
+	data, err := json.Marshal(value)
+	if err != nil {
+		return err
+	}
+	return c.client.Set(ctx, c.key(key), data, ttl).Err()
+}
+
+// Delete removes a value from cache
+func (c *RedisCache) Delete(ctx context.Context, key string) error {
+	return c.client.Del(ctx, c.key(key)).Err()
+}
+
+// Close closes the Redis connection
+func (c *RedisCache) Close() error {
+	return c.client.Close()
+}
+
+func (c *RedisCache) key(key string) string {
+	if c.prefix != "" {
+		return c.prefix + ":" + key
+	}
+	return key
+}
+
+// ErrCacheMiss indicates a cache miss
+var ErrCacheMiss = fmt.Errorf("cache miss")

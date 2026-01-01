@@ -1,0 +1,119 @@
+// Package auth provides authentication and authorization utilities
+package auth
+
+import (
+	"context"
+	"net/http"
+	"strings"
+)
+
+// ContextKey type for context values
+type ContextKey string
+
+const (
+	ContextKeyUser    ContextKey = "user"
+	ContextKeyClaims  ContextKey = "claims"
+	ContextKeyTraceID ContextKey = "trace_id"
+)
+
+// Middleware provides HTTP middleware for authentication
+type Middleware struct {
+	jwtManager *JWTManager
+}
+
+// NewMiddleware creates a new auth Middleware instance
+func NewMiddleware(jwtManager *JWTManager) *Middleware {
+	return &Middleware{
+		jwtManager: jwtManager,
+	}
+}
+
+// Authenticate validates JWT tokens from the Authorization header
+func (m *Middleware) Authenticate(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		authHeader := r.Header.Get("Authorization")
+		if authHeader == "" {
+			http.Error(w, "Missing authorization header", http.StatusUnauthorized)
+			return
+		}
+
+		parts := strings.SplitN(authHeader, " ", 2)
+		if len(parts) != 2 || strings.ToLower(parts[0]) != "bearer" {
+			http.Error(w, "Invalid authorization header format", http.StatusUnauthorized)
+			return
+		}
+
+		claims, err := m.jwtManager.Validate(parts[1])
+		if err != nil {
+			if err == ErrExpiredToken {
+				http.Error(w, "Token expired", http.StatusUnauthorized)
+				return
+			}
+			http.Error(w, "Invalid token", http.StatusUnauthorized)
+			return
+		}
+
+		ctx := context.WithValue(r.Context(), ContextKeyClaims, claims)
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
+// RequireRoles ensures the user has at least one of the required roles
+func (m *Middleware) RequireRoles(roles ...string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			claims, ok := r.Context().Value(ContextKeyClaims).(*Claims)
+			if !ok {
+				http.Error(w, "Unauthorized", http.StatusUnauthorized)
+				return
+			}
+
+			if !HasAnyRole(claims, roles...) {
+				http.Error(w, "Forbidden", http.StatusForbidden)
+				return
+			}
+
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+// Optional extracts claims if present but doesn't require authentication
+func (m *Middleware) Optional(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		authHeader := r.Header.Get("Authorization")
+		if authHeader == "" {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		parts := strings.SplitN(authHeader, " ", 2)
+		if len(parts) != 2 || strings.ToLower(parts[0]) != "bearer" {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		claims, err := m.jwtManager.Validate(parts[1])
+		if err == nil {
+			ctx := context.WithValue(r.Context(), ContextKeyClaims, claims)
+			r = r.WithContext(ctx)
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
+
+// GetClaimsFromContext retrieves claims from the context
+func GetClaimsFromContext(ctx context.Context) (*Claims, bool) {
+	claims, ok := ctx.Value(ContextKeyClaims).(*Claims)
+	return claims, ok
+}
+
+// GetUserIDFromContext retrieves the user ID from the context
+func GetUserIDFromContext(ctx context.Context) (string, bool) {
+	claims, ok := GetClaimsFromContext(ctx)
+	if !ok {
+		return "", false
+	}
+	return claims.UserID, true
+}

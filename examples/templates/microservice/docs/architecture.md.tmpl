@@ -1,0 +1,77 @@
+# {{ .vars.service_name }} Architecture
+
+## Overview
+
+{{ .vars.service_name }} is a production-ready microservice following clean architecture principles.
+
+## System Design
+
+```
+┌──────────────────────────────────────────────────────┐
+│                    API Gateway                        │
+└──────────────────────┬───────────────────────────────┘
+                       │
+┌──────────────────────▼───────────────────────────────┐
+│                 {{ .vars.service_name }}             │
+│  ┌─────────────────────────────────────────────────┐ │
+│  │              Application Layer                  │ │
+│  │  ┌─────────────┐  ┌─────────────┐              │ │
+│  │  │   HTTP      │  │    gRPC     │              │ │
+│  │  │  Handlers   │  │  Handlers   │              │ │
+│  │  └──────┬──────┘  └──────┬──────┘              │ │
+│  └─────────┼────────────────┼──────────────────────┘ │
+│  ┌─────────▼────────────────▼──────────────────────┐ │
+│  │              Domain Layer                       │ │
+│  │  ┌──────────┐  ┌──────────┐  ┌──────────────┐  │ │
+│  │  │ Entities │  │ Services │  │ Repositories │  │ │
+│  │  └──────────┘  └──────────┘  └──────────────┘  │ │
+│  └─────────────────────────────────────────────────┘ │
+│  ┌─────────────────────────────────────────────────┐ │
+│  │           Infrastructure Layer                  │ │
+│  │  ┌────────┐  ┌───────┐  ┌───────┐  ┌────────┐  │ │
+│  │  │Postgres│  │ Redis │  │ Kafka │  │ Jaeger │  │ │
+│  │  └────────┘  └───────┘  └───────┘  └────────┘  │ │
+│  └─────────────────────────────────────────────────┘ │
+└──────────────────────────────────────────────────────┘
+```
+
+## Directory Structure
+
+```
+{{ .vars.service_name | lower }}/
+├── api/                    # API definitions (proto, openapi)
+├── cmd/                    # Application entry points
+│   ├── server/            # HTTP/gRPC server
+│   ├── worker/            # Background worker
+│   └── migrate/           # Migration tool
+├── internal/
+│   ├── domain/            # Business logic (entities, services)
+│   ├── application/       # Handlers, middleware
+│   └── infrastructure/    # External systems (DB, cache, messaging)
+├── configs/               # Configuration files
+├── deployments/           # Deployment manifests
+├── docs/                  # Documentation
+└── test/                  # Test suites
+```
+
+## Key Design Decisions
+
+1. **Clean Architecture**: Separation of concerns with clear layer boundaries
+2. **Domain-Driven Design**: Business logic isolated in domain layer
+3. **Dependency Injection**: All dependencies injected for testability
+4. **Observability First**: Built-in metrics, tracing, and structured logging
+
+## Data Flow
+
+1. Request enters via HTTP or gRPC handler
+2. Handler validates input and calls domain service
+3. Domain service executes business logic
+4. Repository persists/retrieves data
+5. Response returns through layers
+
+## Scalability
+
+- Stateless design enables horizontal scaling
+- Redis cache reduces database load
+- Kafka enables async processing
+- Kubernetes for orchestration

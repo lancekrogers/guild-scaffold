@@ -1,0 +1,13 @@
+module {{ .vars.module_path }}/tools/{{ .vars.tool_name | default "migrator" }}
+
+go {{ .vars.go_version | default "1.22" }}
+
+require (
+	{{ .vars.module_path }}/libs/common v0.0.0
+	{{ .vars.module_path }}/libs/database v0.0.0
+)
+
+replace (
+	{{ .vars.module_path }}/libs/common => ../../libs/common
+	{{ .vars.module_path }}/libs/database => ../../libs/database
+)

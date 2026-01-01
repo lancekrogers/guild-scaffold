@@ -1,0 +1,24 @@
+# {{ .vars.service_name }} Development Configuration
+
+server:
+  port: 8080
+
+database:
+  host: localhost
+  port: 5432
+  name: {{ .vars.service_name | lower }}_dev
+  ssl_mode: disable
+
+cache:
+  host: localhost
+  port: 6379
+
+observability:
+  logging:
+    level: debug
+  tracing:
+    enabled: true
+    endpoint: http://localhost:14268/api/traces
+
+auth:
+  enabled: false

@@ -1,0 +1,77 @@
+// Package postgres implements PostgreSQL database connectivity
+package postgres
+
+import (
+	"context"
+	"database/sql"
+	"fmt"
+	"time"
+
+	_ "github.com/lib/pq"
+)
+
+// Connection wraps a PostgreSQL database connection
+type Connection struct {
+	db *sql.DB
+}
+
+// NewConnection creates a new PostgreSQL connection
+func NewConnection(databaseURL string) (*Connection, error) {
+	db, err := sql.Open("postgres", databaseURL)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open database: %w", err)
+	}
+
+	// Configure connection pool
+	db.SetMaxOpenConns(25)
+	db.SetMaxIdleConns(5)
+	db.SetConnMaxLifetime(5 * time.Minute)
+
+	// Verify connection
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := db.PingContext(ctx); err != nil {
+		return nil, fmt.Errorf("failed to ping database: %w", err)
+	}
+
+	return &Connection{db: db}, nil
+}
+
+// DB returns the underlying database connection
+func (c *Connection) DB() *sql.DB {
+	return c.db
+}
+
+// Close closes the database connection
+func (c *Connection) Close() error {
+	return c.db.Close()
+}
+
+// BeginTx starts a new transaction
+func (c *Connection) BeginTx(ctx context.Context) (*sql.Tx, error) {
+	return c.db.BeginTx(ctx, nil)
+}
+
+// Health checks database connectivity
+func (c *Connection) Health(ctx context.Context) error {
+	return c.db.PingContext(ctx)
+}
+
+// MigrateUp runs all pending migrations
+func MigrateUp(conn *Connection) error {
+	// TODO: Implement with golang-migrate or similar
+	return nil
+}
+
+// MigrateDown rolls back the last migration
+func MigrateDown(conn *Connection) error {
+	// TODO: Implement with golang-migrate or similar
+	return nil
+}
+
+// MigrateTo migrates to a specific version
+func MigrateTo(conn *Connection, version int) error {
+	// TODO: Implement with golang-migrate or similar
+	return nil
+}

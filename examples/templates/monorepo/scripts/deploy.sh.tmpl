@@ -1,0 +1,144 @@
+#!/bin/bash
+# Deploy {{ .vars.project_name }} services
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="$(dirname "$SCRIPT_DIR")"
+
+# Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m'
+
+# Configuration
+ENVIRONMENT="${ENVIRONMENT:-development}"
+REGISTRY="${REGISTRY:-{{ .vars.registry | default "registry.example.com" }}}"
+NAMESPACE="{{ .vars.project_name | lower }}-${ENVIRONMENT}"
+VERSION="${VERSION:-$(git describe --tags --always --dirty 2>/dev/null || echo 'dev')}"
+
+# Services
+SERVICES=(
+    "auth-service"
+    "user-service"
+    "order-service"
+    "payment-service"
+)
+
+usage() {
+    echo "Usage: $0 [OPTIONS] [SERVICE...]"
+    echo ""
+    echo "Deploy services to Kubernetes"
+    echo ""
+    echo "Options:"
+    echo "  -e, --env ENV      Environment (development, staging, production)"
+    echo "  -v, --version VER  Version tag to deploy"
+    echo "  -n, --namespace NS Kubernetes namespace"
+    echo "  --dry-run          Show what would be deployed"
+    echo "  -h, --help         Show this help"
+    echo ""
+    echo "If no services specified, all services are deployed."
+}
+
+# Parse arguments
+DRY_RUN=""
+SELECTED_SERVICES=()
+
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -e|--env)
+            ENVIRONMENT="$2"
+            NAMESPACE="{{ .vars.project_name | lower }}-${ENVIRONMENT}"
+            shift 2
+            ;;
+        -v|--version)
+            VERSION="$2"
+            shift 2
+            ;;
+        -n|--namespace)
+            NAMESPACE="$2"
+            shift 2
+            ;;
+        --dry-run)
+            DRY_RUN="--dry-run=client"
+            shift
+            ;;
+        -h|--help)
+            usage
+            exit 0
+            ;;
+        -*)
+            echo "Unknown option: $1"
+            usage
+            exit 1
+            ;;
+        *)
+            SELECTED_SERVICES+=("$1")
+            shift
+            ;;
+    esac
+done
+
+# Default to all services if none specified
+if [[ ${#SELECTED_SERVICES[@]} -eq 0 ]]; then
+    SELECTED_SERVICES=("${SERVICES[@]}")
+fi
+
+echo -e "${GREEN}Deploying {{ .vars.project_name }} to ${ENVIRONMENT}${NC}"
+echo "Namespace: ${NAMESPACE}"
+echo "Version: ${VERSION}"
+echo "Services: ${SELECTED_SERVICES[*]}"
+echo ""
+
+# Verify kubectl context
+CONTEXT=$(kubectl config current-context)
+echo -e "Kubernetes context: ${YELLOW}${CONTEXT}${NC}"
+read -p "Continue with deployment? [y/N] " -n 1 -r
+echo
+if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+    echo "Deployment cancelled."
+    exit 1
+fi
+
+# Ensure namespace exists
+kubectl create namespace "${NAMESPACE}" --dry-run=client -o yaml | kubectl apply -f -
+
+# Deploy services
+for service in "${SELECTED_SERVICES[@]}"; do
+    echo ""
+    echo -e "Deploying ${YELLOW}${service}${NC}..."
+
+    # Use Helm if chart exists
+    CHART_DIR="${ROOT_DIR}/infrastructure/helm/charts/service-chart"
+    if [[ -d "$CHART_DIR" ]]; then
+        helm upgrade --install "${service}" "${CHART_DIR}" \
+            --namespace "${NAMESPACE}" \
+            --set image.repository="${REGISTRY}/${service}" \
+            --set image.tag="${VERSION}" \
+            --set service.name="${service}" \
+            --values "${ROOT_DIR}/infrastructure/helm/values/${ENVIRONMENT}/${service}.yaml" \
+            ${DRY_RUN} \
+            --wait
+    else
+        # Fall back to kustomize
+        OVERLAY_DIR="${ROOT_DIR}/infrastructure/kubernetes/overlays/${ENVIRONMENT}"
+        if [[ -d "$OVERLAY_DIR" ]]; then
+            kubectl apply -k "${OVERLAY_DIR}" \
+                --namespace "${NAMESPACE}" \
+                ${DRY_RUN}
+        else
+            echo -e "${RED}No deployment configuration found for ${service}${NC}"
+            exit 1
+        fi
+    fi
+
+    echo -e "${GREEN}✓ ${service} deployed${NC}"
+done
+
+echo ""
+echo -e "${GREEN}Deployment complete!${NC}"
+
+# Show status
+echo ""
+echo "Pod status:"
+kubectl get pods -n "${NAMESPACE}" -l "app.kubernetes.io/part-of={{ .vars.project_name | lower }}"

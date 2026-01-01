@@ -1,0 +1,122 @@
+// Database seeder tool for {{ .vars.project_name }}
+package main
+
+import (
+	"context"
+	"flag"
+	"fmt"
+	"log"
+	"os"
+	"time"
+
+	"{{ .vars.module_path }}/libs/database"
+)
+
+func main() {
+	var (
+		seed  = flag.Bool("seed", false, "Run all seeders")
+		fresh = flag.Bool("fresh", false, "Drop all data and re-seed")
+		env   = flag.String("env", "development", "Environment (development, staging, production)")
+	)
+	flag.Parse()
+
+	dsn := os.Getenv("DATABASE_URL")
+	if dsn == "" {
+		log.Fatal("DATABASE_URL environment variable is required")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
+
+	db, err := database.NewPostgresConnection(ctx, dsn)
+	if err != nil {
+		log.Fatalf("Failed to connect to database: %v", err)
+	}
+	defer db.Close()
+
+	if *fresh {
+		if *env == "production" {
+			log.Fatal("Cannot use --fresh in production environment")
+		}
+		if err := truncateAll(ctx, db); err != nil {
+			log.Fatalf("Failed to truncate tables: %v", err)
+		}
+		fmt.Println("All tables truncated")
+	}
+
+	if *seed || *fresh {
+		if err := runSeeders(ctx, db, *env); err != nil {
+			log.Fatalf("Seeding failed: %v", err)
+		}
+		fmt.Println("Seeding completed successfully")
+	} else {
+		flag.Usage()
+	}
+}
+
+func truncateAll(ctx context.Context, db *database.PostgresDB) error {
+	// Get all table names
+	query := `
+		SELECT tablename FROM pg_tables
+		WHERE schemaname = 'public'
+		AND tablename != 'schema_migrations'
+	`
+	rows, err := db.Query(ctx, query)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	var tables []string
+	for rows.Next() {
+		var table string
+		if err := rows.Scan(&table); err != nil {
+			return err
+		}
+		tables = append(tables, table)
+	}
+
+	// Truncate all tables
+	for _, table := range tables {
+		if _, err := db.Exec(ctx, fmt.Sprintf("TRUNCATE TABLE %s CASCADE", table)); err != nil {
+			return fmt.Errorf("failed to truncate %s: %w", table, err)
+		}
+	}
+
+	return nil
+}
+
+func runSeeders(ctx context.Context, db *database.PostgresDB, env string) error {
+	seeders := []struct {
+		name string
+		fn   func(context.Context, *database.PostgresDB) error
+	}{
+		{"users", seedUsers},
+		{"roles", seedRoles},
+	}
+
+	for _, s := range seeders {
+		fmt.Printf("Running seeder: %s\n", s.name)
+		if err := s.fn(ctx, db); err != nil {
+			return fmt.Errorf("seeder %s failed: %w", s.name, err)
+		}
+	}
+
+	return nil
+}
+
+func seedUsers(ctx context.Context, db *database.PostgresDB) error {
+	// TODO: Implement user seeding
+	// Example:
+	// _, err := db.Exec(ctx, `
+	//   INSERT INTO users (id, email, name, created_at)
+	//   VALUES ($1, $2, $3, $4)
+	//   ON CONFLICT (id) DO NOTHING
+	// `, uuid.New(), "admin@example.com", "Admin User", time.Now())
+	return nil
+}
+
+func seedRoles(ctx context.Context, db *database.PostgresDB) error {
+	// TODO: Implement role seeding
+	return nil
+}

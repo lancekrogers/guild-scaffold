@@ -1,0 +1,76 @@
+// Package observability contains distributed tracing
+package observability
+
+import (
+	"context"
+	"net/http"
+
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/exporters/jaeger"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/sdk/resource"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
+	"go.opentelemetry.io/otel/trace"
+)
+
+// Tracer wraps OpenTelemetry tracing
+type Tracer struct {
+	tracer   trace.Tracer
+	provider *sdktrace.TracerProvider
+}
+
+// NewTracer creates a new Jaeger tracer
+func NewTracer(serviceName, jaegerEndpoint string) (*Tracer, error) {
+	// Create Jaeger exporter
+	exp, err := jaeger.New(jaeger.WithCollectorEndpoint(jaeger.WithEndpoint(jaegerEndpoint)))
+	if err != nil {
+		return nil, err
+	}
+
+	// Create trace provider
+	tp := sdktrace.NewTracerProvider(
+		sdktrace.WithBatcher(exp),
+		sdktrace.WithResource(resource.NewWithAttributes(
+			semconv.SchemaURL,
+			semconv.ServiceNameKey.String(serviceName),
+		)),
+	)
+
+	otel.SetTracerProvider(tp)
+	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
+		propagation.TraceContext{},
+		propagation.Baggage{},
+	))
+
+	return &Tracer{
+		tracer:   tp.Tracer(serviceName),
+		provider: tp,
+	}, nil
+}
+
+// Start begins a new span
+func (t *Tracer) Start(ctx context.Context, name string, opts ...trace.SpanStartOption) (context.Context, trace.Span) {
+	return t.tracer.Start(ctx, name, opts...)
+}
+
+// Middleware adds tracing to HTTP handlers
+func (t *Tracer) Middleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx, span := t.Start(r.Context(), r.URL.Path,
+			trace.WithAttributes(
+				attribute.String("http.method", r.Method),
+				attribute.String("http.url", r.URL.String()),
+			),
+		)
+		defer span.End()
+
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
+// Shutdown gracefully shuts down the tracer
+func (t *Tracer) Shutdown(ctx context.Context) error {
+	return t.provider.Shutdown(ctx)
+}

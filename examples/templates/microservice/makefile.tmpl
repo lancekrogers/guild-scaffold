@@ -1,0 +1,84 @@
+# {{ .vars.service_name }} Makefile
+
+.PHONY: all build run test clean dev docker-build docker-push migrate-up migrate-down lint proto
+
+APP_NAME := {{ .vars.service_name | lower }}
+VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
+BUILD_DIR := bin
+DOCKER_REGISTRY := {{ .vars.registry | default "registry.example.com" }}
+
+# Build
+all: build
+
+build:
+	@echo "Building $(APP_NAME)..."
+	@mkdir -p $(BUILD_DIR)
+	@go build -ldflags="-X main.Version=$(VERSION)" -o $(BUILD_DIR)/server ./cmd/server
+	@go build -o $(BUILD_DIR)/worker ./cmd/worker
+	@go build -o $(BUILD_DIR)/migrate ./cmd/migrate
+
+# Run
+run: build
+	@./$(BUILD_DIR)/server
+
+dev:
+	@go run ./cmd/server
+
+worker:
+	@go run ./cmd/worker
+
+# Test
+test:
+	@go test -v -race ./...
+
+test-coverage:
+	@go test -v -race -coverprofile=coverage.out ./...
+	@go tool cover -html=coverage.out -o coverage.html
+
+test-integration:
+	@E2E_TEST=true go test -v -tags=integration ./test/...
+
+test-load:
+	@k6 run test/k6_load_test.js
+
+# Lint
+lint:
+	@golangci-lint run
+
+# Database
+migrate-up:
+	@./$(BUILD_DIR)/migrate -up
+
+migrate-down:
+	@./$(BUILD_DIR)/migrate -down
+
+# Docker
+docker-build:
+	@docker build -t $(DOCKER_REGISTRY)/$(APP_NAME):$(VERSION) -f deployments/docker/Dockerfile .
+
+docker-push: docker-build
+	@docker push $(DOCKER_REGISTRY)/$(APP_NAME):$(VERSION)
+
+# Proto
+proto:
+	@protoc --go_out=. --go-grpc_out=. api/proto/*.proto
+
+# Clean
+clean:
+	@rm -rf $(BUILD_DIR)
+	@rm -f coverage.out coverage.html
+
+# Help
+help:
+	@echo "Available targets:"
+	@echo "  build          - Build all binaries"
+	@echo "  run            - Build and run server"
+	@echo "  dev            - Run server in development mode"
+	@echo "  test           - Run unit tests"
+	@echo "  test-coverage  - Run tests with coverage"
+	@echo "  lint           - Run linter"
+	@echo "  docker-build   - Build Docker image"
+	@echo "  docker-push    - Push Docker image"
+	@echo "  migrate-up     - Run database migrations"
+	@echo "  migrate-down   - Rollback migrations"
+	@echo "  clean          - Clean build artifacts"

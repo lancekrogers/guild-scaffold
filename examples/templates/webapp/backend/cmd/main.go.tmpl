@@ -1,0 +1,107 @@
+// {{ .vars.project_name }} API Server
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
+
+	"{{ .vars.module_path }}/internal/database"
+	"{{ .vars.module_path }}/internal/handlers"
+	"{{ .vars.module_path }}/internal/middleware"
+	"{{ .vars.module_path }}/internal/services"
+	"{{ .vars.module_path }}/pkg/config"
+)
+
+func main() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Load configuration
+	cfg, err := config.Load()
+	if err != nil {
+		log.Fatalf("Failed to load config: %v", err)
+	}
+
+	// Initialize database
+	db, err := database.NewPostgres(ctx, cfg.DatabaseURL)
+	if err != nil {
+		log.Fatalf("Failed to connect to database: %v", err)
+	}
+	defer db.Close()
+
+	// Initialize services
+	authService := services.NewAuthService(db, cfg.JWTSecret)
+	userService := services.NewUserService(db)
+	emailService := services.NewEmailService(cfg.SMTPConfig)
+
+	// Initialize handlers
+	authHandler := handlers.NewAuthHandler(authService, userService, emailService)
+	userHandler := handlers.NewUserHandler(userService)
+	healthHandler := handlers.NewHealthHandler(db)
+
+	// Setup router
+	mux := http.NewServeMux()
+
+	// Health endpoints
+	mux.HandleFunc("GET /health", healthHandler.Health)
+	mux.HandleFunc("GET /ready", healthHandler.Ready)
+
+	// Auth endpoints
+	mux.HandleFunc("POST /api/auth/register", authHandler.Register)
+	mux.HandleFunc("POST /api/auth/login", authHandler.Login)
+	mux.HandleFunc("POST /api/auth/logout", authHandler.Logout)
+	mux.HandleFunc("POST /api/auth/refresh", authHandler.Refresh)
+
+	// User endpoints (protected)
+	mux.HandleFunc("GET /api/users/me", middleware.Auth(cfg.JWTSecret)(userHandler.Me))
+	mux.HandleFunc("PUT /api/users/me", middleware.Auth(cfg.JWTSecret)(userHandler.Update))
+
+	// Apply middleware stack
+	handler := middleware.Chain(
+		mux,
+		middleware.Logger(),
+		middleware.CORS(cfg.AllowedOrigins),
+		middleware.RateLimit(100, time.Minute),
+		middleware.Recover(),
+	)
+
+	// Create server
+	server := &http.Server{
+		Addr:         fmt.Sprintf(":%s", cfg.Port),
+		Handler:      handler,
+		ReadTimeout:  15 * time.Second,
+		WriteTimeout: 15 * time.Second,
+		IdleTimeout:  60 * time.Second,
+	}
+
+	// Start server
+	go func() {
+		log.Printf("Server starting on port %s", cfg.Port)
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("Server failed: %v", err)
+		}
+	}()
+
+	// Wait for interrupt signal
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+
+	log.Println("Shutting down server...")
+
+	// Graceful shutdown
+	shutdownCtx, shutdownCancel := context.WithTimeout(ctx, 30*time.Second)
+	defer shutdownCancel()
+
+	if err := server.Shutdown(shutdownCtx); err != nil {
+		log.Fatalf("Server forced to shutdown: %v", err)
+	}
+
+	log.Println("Server stopped")
+}

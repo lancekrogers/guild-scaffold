@@ -1,0 +1,101 @@
+// CLI command definitions for {{ .vars.project_name }}
+package cmd
+
+import (
+	"fmt"
+	"os"
+
+	"github.com/spf13/cobra"
+)
+
+var (
+	version string
+	commit  string
+	date    string
+	verbose bool
+)
+
+// SetVersion sets the version information
+func SetVersion(v, c, d string) {
+	version = v
+	commit = c
+	date = d
+}
+
+var rootCmd = &cobra.Command{
+	Use:   "{{ .vars.project_name | lower }}",
+	Short: "{{ .vars.project_name }} CLI tool",
+	Long: `{{ .vars.project_name }} - A comprehensive CLI tool for managing
+the {{ .vars.project_name }} monorepo and its services.`,
+}
+
+var versionCmd = &cobra.Command{
+	Use:   "version",
+	Short: "Print version information",
+	Run: func(cmd *cobra.Command, args []string) {
+		fmt.Printf("{{ .vars.project_name }} CLI\n")
+		fmt.Printf("  Version: %s\n", version)
+		fmt.Printf("  Commit:  %s\n", commit)
+		fmt.Printf("  Date:    %s\n", date)
+	},
+}
+
+var servicesCmd = &cobra.Command{
+	Use:   "services",
+	Short: "List all services",
+	Run: func(cmd *cobra.Command, args []string) {
+		services := []string{
+			"auth-service",
+			"user-service",
+			"order-service",
+			"payment-service",
+		}
+		fmt.Println("Available services:")
+		for _, s := range services {
+			fmt.Printf("  - %s\n", s)
+		}
+	},
+}
+
+var buildCmd = &cobra.Command{
+	Use:   "build [service]",
+	Short: "Build a service or all services",
+	Args:  cobra.MaximumNArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		if len(args) == 0 {
+			fmt.Println("Building all services...")
+		} else {
+			fmt.Printf("Building service: %s\n", args[0])
+		}
+	},
+}
+
+var deployCmd = &cobra.Command{
+	Use:   "deploy [service]",
+	Short: "Deploy a service or all services",
+	Args:  cobra.MaximumNArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		env, _ := cmd.Flags().GetString("env")
+		if len(args) == 0 {
+			fmt.Printf("Deploying all services to %s...\n", env)
+		} else {
+			fmt.Printf("Deploying %s to %s...\n", args[0], env)
+		}
+	},
+}
+
+func init() {
+	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Enable verbose output")
+
+	deployCmd.Flags().StringP("env", "e", "development", "Target environment")
+
+	rootCmd.AddCommand(versionCmd)
+	rootCmd.AddCommand(servicesCmd)
+	rootCmd.AddCommand(buildCmd)
+	rootCmd.AddCommand(deployCmd)
+}
+
+// Execute runs the root command
+func Execute() error {
+	return rootCmd.Execute()
+}

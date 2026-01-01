@@ -1,0 +1,124 @@
+// Package messaging provides message broker connectivity
+package messaging
+
+import (
+	"context"
+	"encoding/json"
+	"time"
+
+	"github.com/segmentio/kafka-go"
+)
+
+// KafkaProducer handles publishing messages to Kafka
+type KafkaProducer struct {
+	writer *kafka.Writer
+}
+
+// KafkaConsumer handles consuming messages from Kafka
+type KafkaConsumer struct {
+	reader *kafka.Reader
+}
+
+// Message represents a message to be published or consumed
+type Message struct {
+	Key       string
+	Value     []byte
+	Topic     string
+	Partition int
+	Offset    int64
+	Timestamp time.Time
+	Headers   map[string]string
+}
+
+// NewKafkaProducer creates a new Kafka producer
+func NewKafkaProducer(brokers []string, topic string) *KafkaProducer {
+	return &KafkaProducer{
+		writer: &kafka.Writer{
+			Addr:         kafka.TCP(brokers...),
+			Topic:        topic,
+			Balancer:     &kafka.LeastBytes{},
+			BatchTimeout: 10 * time.Millisecond,
+			RequiredAcks: kafka.RequireAll,
+		},
+	}
+}
+
+// Publish sends a message to Kafka
+func (p *KafkaProducer) Publish(ctx context.Context, key string, value interface{}) error {
+	data, err := json.Marshal(value)
+	if err != nil {
+		return err
+	}
+
+	return p.writer.WriteMessages(ctx, kafka.Message{
+		Key:   []byte(key),
+		Value: data,
+		Time:  time.Now(),
+	})
+}
+
+// Close closes the producer
+func (p *KafkaProducer) Close() error {
+	return p.writer.Close()
+}
+
+// NewKafkaConsumer creates a new Kafka consumer
+func NewKafkaConsumer(brokers []string, topic, groupID string) *KafkaConsumer {
+	return &KafkaConsumer{
+		reader: kafka.NewReader(kafka.ReaderConfig{
+			Brokers:        brokers,
+			Topic:          topic,
+			GroupID:        groupID,
+			MinBytes:       10e3,
+			MaxBytes:       10e6,
+			CommitInterval: time.Second,
+			StartOffset:    kafka.FirstOffset,
+		}),
+	}
+}
+
+// Consume reads the next message from Kafka
+func (c *KafkaConsumer) Consume(ctx context.Context) (*Message, error) {
+	msg, err := c.reader.ReadMessage(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	headers := make(map[string]string)
+	for _, h := range msg.Headers {
+		headers[h.Key] = string(h.Value)
+	}
+
+	return &Message{
+		Key:       string(msg.Key),
+		Value:     msg.Value,
+		Topic:     msg.Topic,
+		Partition: msg.Partition,
+		Offset:    msg.Offset,
+		Timestamp: msg.Time,
+		Headers:   headers,
+	}, nil
+}
+
+// Close closes the consumer
+func (c *KafkaConsumer) Close() error {
+	return c.reader.Close()
+}
+
+// ConsumeLoop starts a consumer loop with a handler function
+func (c *KafkaConsumer) ConsumeLoop(ctx context.Context, handler func(context.Context, *Message) error) error {
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+			msg, err := c.Consume(ctx)
+			if err != nil {
+				return err
+			}
+			if err := handler(ctx, msg); err != nil {
+				return err
+			}
+		}
+	}
+}

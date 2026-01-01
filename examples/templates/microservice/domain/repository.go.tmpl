@@ -1,0 +1,58 @@
+// Package domain contains repository interfaces
+package domain
+
+import (
+	"context"
+
+	"github.com/google/uuid"
+)
+
+// Repository defines the interface for entity persistence
+type Repository interface {
+	// Create persists a new entity
+	Create(ctx context.Context, entity *Entity) error
+
+	// Get retrieves an entity by ID
+	Get(ctx context.Context, id uuid.UUID) (*Entity, error)
+
+	// List retrieves entities with pagination
+	List(ctx context.Context, opts ListOptions) ([]*Entity, string, error)
+
+	// Update updates an existing entity
+	Update(ctx context.Context, entity *Entity) error
+
+	// Delete removes an entity by ID
+	Delete(ctx context.Context, id uuid.UUID) error
+}
+
+// ListOptions contains pagination options
+type ListOptions struct {
+	PageSize  int
+	PageToken string
+	Filter    map[string]string
+}
+
+// DefaultListOptions returns default list options
+func DefaultListOptions() ListOptions {
+	return ListOptions{
+		PageSize: 20,
+	}
+}
+
+// UnitOfWork defines transactional operations
+type UnitOfWork interface {
+	// Begin starts a transaction
+	Begin(ctx context.Context) (Transaction, error)
+}
+
+// Transaction represents a database transaction
+type Transaction interface {
+	// Commit commits the transaction
+	Commit() error
+
+	// Rollback rolls back the transaction
+	Rollback() error
+
+	// Repository returns the repository for this transaction
+	Repository() Repository
+}

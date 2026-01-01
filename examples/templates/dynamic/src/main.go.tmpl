@@ -1,0 +1,32 @@
+// {{ .vars.project_name }} - Dynamic Project
+// Generated with Guild Scaffold
+package main
+
+import (
+	"fmt"
+	"log"
+	"os"
+)
+
+func main() {
+	cfg, err := LoadConfig()
+	if err != nil {
+		log.Fatalf("Failed to load config: %v", err)
+	}
+
+	fmt.Printf("Starting %s v%s\n", cfg.AppName, cfg.Version)
+	fmt.Printf("Author: %s\n", cfg.Author)
+	fmt.Printf("License: %s\n", cfg.License)
+
+	// Application logic here
+	if err := run(cfg); err != nil {
+		log.Fatalf("Application error: %v", err)
+		os.Exit(1)
+	}
+}
+
+func run(cfg *Config) error {
+	// TODO: Implement your application logic
+	fmt.Println("Application running...")
+	return nil
+}

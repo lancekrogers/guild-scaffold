@@ -1,0 +1,92 @@
+// {{ .vars.service_name }} HTTP handlers
+package handlers
+
+import (
+	"context"
+	"encoding/json"
+	"net/http"
+
+	"{{ .vars.module_path }}/libs/common"
+	"{{ .vars.module_path }}/libs/database"
+)
+
+// Handler provides HTTP handlers for {{ .vars.service_name | lower }} operations
+type Handler struct {
+	db     *database.PostgresDB
+	logger *common.Logger
+}
+
+// New creates a new Handler instance
+func New(db *database.PostgresDB, logger *common.Logger) *Handler {
+	return &Handler{
+		db:     db,
+		logger: logger,
+	}
+}
+
+// ServeHTTP implements http.Handler
+func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	switch r.Method {
+	case http.MethodGet:
+		h.handleGet(ctx, w, r)
+	case http.MethodPost:
+		h.handlePost(ctx, w, r)
+	case http.MethodPut:
+		h.handlePut(ctx, w, r)
+	case http.MethodDelete:
+		h.handleDelete(ctx, w, r)
+	default:
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	}
+}
+
+func (h *Handler) handleGet(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	h.logger.Info(ctx, "Handling GET request", "path", r.URL.Path)
+
+	// TODO: Implement GET logic
+	response := map[string]interface{}{
+		"status":  "ok",
+		"service": "{{ .vars.service_name | lower }}",
+	}
+
+	h.writeJSON(w, http.StatusOK, response)
+}
+
+func (h *Handler) handlePost(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	h.logger.Info(ctx, "Handling POST request", "path", r.URL.Path)
+
+	// TODO: Implement POST logic
+	response := map[string]interface{}{
+		"status":  "created",
+		"service": "{{ .vars.service_name | lower }}",
+	}
+
+	h.writeJSON(w, http.StatusCreated, response)
+}
+
+func (h *Handler) handlePut(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	h.logger.Info(ctx, "Handling PUT request", "path", r.URL.Path)
+
+	// TODO: Implement PUT logic
+	response := map[string]interface{}{
+		"status":  "updated",
+		"service": "{{ .vars.service_name | lower }}",
+	}
+
+	h.writeJSON(w, http.StatusOK, response)
+}
+
+func (h *Handler) handleDelete(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	h.logger.Info(ctx, "Handling DELETE request", "path", r.URL.Path)
+
+	// TODO: Implement DELETE logic
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *Handler) writeJSON(w http.ResponseWriter, status int, data interface{}) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	json.NewEncoder(w).Encode(data)
+}

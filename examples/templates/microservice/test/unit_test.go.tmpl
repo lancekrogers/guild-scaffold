@@ -1,0 +1,58 @@
+package test
+
+import (
+	"testing"
+
+	"{{ .vars.module_path }}/internal/domain"
+)
+
+func TestNewEntity(t *testing.T) {
+	entity := domain.NewEntity("test")
+
+	if entity.ID.String() == "" {
+		t.Error("expected ID to be set")
+	}
+	if entity.Name != "test" {
+		t.Errorf("expected name 'test', got '%s'", entity.Name)
+	}
+	if entity.CreatedAt.IsZero() {
+		t.Error("expected CreatedAt to be set")
+	}
+}
+
+func TestEntityValidation(t *testing.T) {
+	tests := []struct {
+		name    string
+		entity  *domain.Entity
+		wantErr bool
+	}{
+		{
+			name:    "valid entity",
+			entity:  domain.NewEntity("test"),
+			wantErr: false,
+		},
+		{
+			name:    "empty name",
+			entity:  &domain.Entity{Name: ""},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.entity.Validate()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Validate() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestEntitySetMetadata(t *testing.T) {
+	entity := domain.NewEntity("test")
+	entity.SetMetadata("key", "value")
+
+	if entity.Metadata["key"] != "value" {
+		t.Errorf("expected metadata key='value', got '%s'", entity.Metadata["key"])
+	}
+}

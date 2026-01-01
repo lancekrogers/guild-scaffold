@@ -1,0 +1,23 @@
+# Helm Chart for {{ .vars.project_name }} Services
+apiVersion: v2
+name: {{ .vars.project_name | lower }}-service
+description: A Helm chart for deploying {{ .vars.project_name }} microservices
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+
+keywords:
+  - {{ .vars.project_name | lower }}
+  - microservice
+  - go
+
+maintainers:
+  - name: {{ .vars.author | default "Platform Team" }}
+    email: {{ .vars.email | default "platform@example.com" }}
+
+dependencies: []
+
+# This chart can be used as a library chart for all services
+annotations:
+  category: Backend
+  licenses: Apache-2.0

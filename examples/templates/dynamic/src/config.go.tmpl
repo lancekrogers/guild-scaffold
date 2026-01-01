@@ -1,0 +1,36 @@
+package main
+
+import (
+	"os"
+)
+
+// Config holds the application configuration
+type Config struct {
+	AppName  string
+	Version  string
+	Author   string
+	License  string
+	LogLevel string
+	DataDir  string
+}
+
+// LoadConfig loads configuration from environment variables with defaults
+func LoadConfig() (*Config, error) {
+	cfg := &Config{
+		AppName:  getEnv("APP_NAME", "{{ .vars.project_name }}"),
+		Version:  getEnv("APP_VERSION", "1.0.0"),
+		Author:   getEnv("APP_AUTHOR", "{{ .vars.author | default "Guild Framework" }}"),
+		License:  getEnv("APP_LICENSE", "{{ .vars.license | default "MIT" }}"),
+		LogLevel: getEnv("LOG_LEVEL", "info"),
+		DataDir:  getEnv("DATA_DIR", "./data"),
+	}
+
+	return cfg, nil
+}
+
+func getEnv(key, defaultValue string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return defaultValue
+}

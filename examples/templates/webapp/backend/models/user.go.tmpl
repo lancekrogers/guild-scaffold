@@ -1,0 +1,41 @@
+// Package models defines data structures
+package models
+
+import (
+	"time"
+)
+
+// User represents a user in the system
+type User struct {
+	ID        string    `json:"id"`
+	Email     string    `json:"email"`
+	Name      string    `json:"name"`
+	Avatar    string    `json:"avatar,omitempty"`
+	Role      string    `json:"role"`
+	Verified  bool      `json:"verified"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+// UserCreate represents data for creating a user
+type UserCreate struct {
+	Email    string
+	Password string
+	Name     string
+}
+
+// UserUpdate represents data for updating a user
+type UserUpdate struct {
+	Name   string
+	Avatar string
+}
+
+// PublicUser returns user data safe for public exposure
+func (u *User) PublicUser() map[string]interface{} {
+	return map[string]interface{}{
+		"id":         u.ID,
+		"name":       u.Name,
+		"avatar":     u.Avatar,
+		"created_at": u.CreatedAt,
+	}
+}

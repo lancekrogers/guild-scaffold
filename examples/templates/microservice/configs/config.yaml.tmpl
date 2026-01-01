@@ -1,0 +1,49 @@
+# {{ .vars.service_name }} Configuration
+# Base configuration (overridden by environment-specific configs)
+
+server:
+  host: "0.0.0.0"
+  port: 8080
+  read_timeout: 15s
+  write_timeout: 15s
+  idle_timeout: 60s
+
+database:
+  driver: postgres
+  host: localhost
+  port: 5432
+  name: {{ .vars.service_name | lower }}
+  ssl_mode: disable
+  max_open_conns: 25
+  max_idle_conns: 5
+  conn_max_lifetime: 5m
+
+cache:
+  enabled: true
+  driver: redis
+  host: localhost
+  port: 6379
+  db: 0
+  prefix: "{{ .vars.service_name | lower }}"
+
+messaging:
+  enabled: false
+  driver: kafka
+  brokers:
+    - localhost:9092
+  consumer_group: "{{ .vars.service_name | lower }}-group"
+
+observability:
+  metrics:
+    enabled: true
+    path: /metrics
+  tracing:
+    enabled: false
+    endpoint: http://localhost:14268/api/traces
+  logging:
+    level: info
+    format: json
+
+auth:
+  enabled: true
+  jwt_expiry: 24h

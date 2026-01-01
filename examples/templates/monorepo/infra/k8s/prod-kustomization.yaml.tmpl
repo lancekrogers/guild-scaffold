@@ -1,0 +1,74 @@
+# Kustomization for Production Environment
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: {{ .vars.project_name | lower }}-prod
+
+namePrefix: prod-
+
+commonLabels:
+  environment: production
+  app.kubernetes.io/part-of: {{ .vars.project_name | lower }}
+
+resources:
+  - ../../base
+
+patches:
+  - patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 3
+    target:
+      kind: Deployment
+  # Add pod disruption budgets for production
+  - patch: |-
+      apiVersion: policy/v1
+      kind: PodDisruptionBudget
+      metadata:
+        name: service-pdb
+      spec:
+        minAvailable: 2
+        selector:
+          matchLabels:
+            app.kubernetes.io/part-of: {{ .vars.project_name | lower }}
+    target:
+      kind: Deployment
+
+configMapGenerator:
+  - name: {{ .vars.project_name | lower }}-config
+    behavior: merge
+    literals:
+      - ENVIRONMENT=production
+      - LOG_LEVEL=warn
+      - METRICS_ENABLED=true
+      - TRACING_ENABLED=true
+
+# Production resource requests/limits
+patchesStrategicMerge:
+  - |-
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: placeholder
+    spec:
+      template:
+        spec:
+          containers:
+            - name: main
+              resources:
+                requests:
+                  cpu: "250m"
+                  memory: "256Mi"
+                limits:
+                  cpu: "1000m"
+                  memory: "1Gi"
+
+images:
+  - name: auth-service
+    newTag: v1.0.0
+  - name: user-service
+    newTag: v1.0.0
+  - name: order-service
+    newTag: v1.0.0
+  - name: payment-service
+    newTag: v1.0.0

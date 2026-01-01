@@ -1,0 +1,124 @@
+# Contributing to {{ .vars.project_name }}
+
+We love your input! We want to make contributing to {{ .vars.project_name }} as easy and transparent as possible.
+
+## Development Process
+
+1. Fork the repo and create your branch from `main`
+2. If you've added code that should be tested, add tests
+3. If you've changed APIs, update the documentation
+4. Ensure the test suite passes
+5. Make sure your code lints
+6. Issue that pull request!
+
+## Getting Started
+
+```bash
+# Clone your fork
+git clone https://github.com/YOUR_USERNAME/{{ .vars.project_name | lower }}.git
+
+# Set up development environment
+./scripts/setup-dev.sh
+
+# Create a feature branch
+git checkout -b feature/amazing-feature
+```
+
+## Code Style
+
+### Go Code
+
+- Follow the [Effective Go](https://golang.org/doc/effective_go) guidelines
+- Use `gofmt` for formatting
+- Use `golangci-lint` for linting
+- Write descriptive commit messages
+
+### Commit Messages
+
+We follow [Conventional Commits](https://www.conventionalcommits.org/):
+
+```
+<type>(<scope>): <subject>
+
+<body>
+
+<footer>
+```
+
+Types:
+- `feat`: New feature
+- `fix`: Bug fix
+- `docs`: Documentation only
+- `style`: Formatting, missing semicolons, etc.
+- `refactor`: Code change that neither fixes a bug nor adds a feature
+- `test`: Adding missing tests
+- `chore`: Maintenance tasks
+
+Examples:
+```
+feat(auth): add OAuth2 support for Google
+
+fix(order): prevent duplicate order creation
+
+docs(readme): update installation instructions
+```
+
+## Testing
+
+```bash
+# Run all tests
+make test
+
+# Run tests with coverage
+make test-coverage
+
+# Run integration tests
+make test-integration
+```
+
+### Writing Tests
+
+- Write table-driven tests when applicable
+- Mock external dependencies
+- Test both success and error cases
+- Aim for 80%+ code coverage
+
+## Pull Request Process
+
+1. Update the README.md with details of changes if applicable
+2. Update the CHANGELOG.md with your changes
+3. The PR will be merged once you have the sign-off of at least one maintainer
+
+### PR Checklist
+
+- [ ] Tests pass locally
+- [ ] Linter passes
+- [ ] Documentation updated
+- [ ] CHANGELOG updated
+- [ ] Commit messages follow conventions
+
+## Code Review
+
+All submissions require review. We use GitHub pull requests for this purpose.
+
+### What We Look For
+
+- Code correctness
+- Test coverage
+- Documentation
+- Performance implications
+- Security considerations
+
+## Community
+
+- Be respectful and inclusive
+- Follow our [Code of Conduct](CODE_OF_CONDUCT.md)
+- Help others in discussions and issues
+
+## License
+
+By contributing, you agree that your contributions will be licensed under the same license as the project.
+
+## Questions?
+
+Feel free to open an issue or contact the maintainers.

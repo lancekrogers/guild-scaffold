@@ -1,0 +1,47 @@
+import http from 'k6/http';
+import { check, sleep } from 'k6';
+
+export const options = {
+  stages: [
+    { duration: '30s', target: 10 },  // Ramp up
+    { duration: '1m', target: 10 },   // Stay at 10 users
+    { duration: '30s', target: 50 },  // Ramp up more
+    { duration: '1m', target: 50 },   // Stay at 50 users
+    { duration: '30s', target: 0 },   // Ramp down
+  ],
+  thresholds: {
+    http_req_duration: ['p(95)<200'], // 95% of requests should be < 200ms
+    http_req_failed: ['rate<0.01'],   // Error rate should be < 1%
+  },
+};
+
+const BASE_URL = __ENV.BASE_URL || 'http://localhost:8080';
+
+export default function () {
+  // Health check
+  const healthRes = http.get(`${BASE_URL}/health`);
+  check(healthRes, {
+    'health status is 200': (r) => r.status === 200,
+    'health response time < 100ms': (r) => r.timings.duration < 100,
+  });
+
+  // List resources
+  const listRes = http.get(`${BASE_URL}/api/v1/resources`);
+  check(listRes, {
+    'list status is 200': (r) => r.status === 200,
+    'list response time < 200ms': (r) => r.timings.duration < 200,
+  });
+
+  // Create resource
+  const createRes = http.post(
+    `${BASE_URL}/api/v1/resources`,
+    JSON.stringify({ name: `test-${Date.now()}` }),
+    { headers: { 'Content-Type': 'application/json' } }
+  );
+  check(createRes, {
+    'create status is 201': (r) => r.status === 201,
+    'create response time < 300ms': (r) => r.timings.duration < 300,
+  });
+
+  sleep(1);
+}

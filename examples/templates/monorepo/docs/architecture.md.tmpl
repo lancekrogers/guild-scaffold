@@ -1,0 +1,134 @@
+# {{ .vars.project_name }} Architecture
+
+## Overview
+
+{{ .vars.project_name }} is built as a distributed microservices architecture, designed for scalability, resilience, and maintainability.
+
+## System Architecture
+
+```
+                                    ┌─────────────────┐
+                                    │   Load Balancer │
+                                    │    (Ingress)    │
+                                    └────────┬────────┘
+                                             │
+                    ┌────────────────────────┼────────────────────────┐
+                    │                        │                        │
+            ┌───────▼───────┐       ┌────────▼───────┐      ┌────────▼───────┐
+            │  Auth Service │       │  User Service  │      │ Order Service  │
+            │    :8081      │       │     :8082      │      │    :8083       │
+            └───────┬───────┘       └────────┬───────┘      └────────┬───────┘
+                    │                        │                        │
+                    └────────────────────────┼────────────────────────┘
+                                             │
+                    ┌────────────────────────┼────────────────────────┐
+                    │                        │                        │
+            ┌───────▼───────┐       ┌────────▼───────┐      ┌────────▼───────┐
+            │   PostgreSQL  │       │     Redis      │      │     Kafka      │
+            └───────────────┘       └────────────────┘      └────────────────┘
+```
+
+## Services
+
+### Auth Service
+
+Handles authentication and authorization:
+- JWT token generation and validation
+- OAuth2 integration
+- Role-based access control (RBAC)
+
+### User Service
+
+Manages user data and profiles:
+- User CRUD operations
+- Profile management
+- User preferences
+
+### Order Service
+
+Processes orders and transactions:
+- Order creation and management
+- Order state machine
+- Inventory integration
+
+### Payment Service
+
+Handles payment processing:
+- Payment gateway integration
+- Transaction management
+- Refund processing
+
+## Shared Libraries
+
+Located in `libs/`:
+
+| Library | Purpose |
+|---------|---------|
+| common | Shared utilities, logging, config |
+| database | Database connectivity and migrations |
+| messaging | Kafka/RabbitMQ clients and event bus |
+| auth | JWT utilities and middleware |
+
+## Communication Patterns
+
+### Synchronous (HTTP/gRPC)
+
+- Service-to-service calls for real-time operations
+- REST APIs for external clients
+- gRPC for internal high-performance communication
+
+### Asynchronous (Events)
+
+- Domain events via Kafka
+- Event sourcing for audit trails
+- Saga pattern for distributed transactions
+
+## Data Architecture
+
+### Database per Service
+
+Each service owns its database schema:
+
+```
+auth-service    → auth_db
+user-service    → user_db
+order-service   → order_db
+payment-service → payment_db
+```
+
+### Caching Strategy
+
+- Redis for session management
+- Application-level caching for frequently accessed data
+- Cache invalidation via events
+
+## Deployment Architecture
+
+### Kubernetes Resources
+
+- Deployments for stateless services
+- StatefulSets for databases (in non-production)
+- Horizontal Pod Autoscaler for scaling
+- Network Policies for security
+
+### Environment Strategy
+
+| Environment | Purpose | Infrastructure |
+|-------------|---------|----------------|
+| Development | Local development | Docker Compose |
+| Staging | Pre-production testing | Kubernetes |
+| Production | Live system | Kubernetes (HA) |
+
+## Security
+
+- TLS everywhere (in-transit encryption)
+- Secrets management via Kubernetes Secrets / Vault
+- Network segmentation via Network Policies
+- Regular security scanning (CodeQL, Trivy)
+
+## Observability
+
+- **Metrics**: Prometheus + Grafana
+- **Logging**: Structured JSON logs → Loki
+- **Tracing**: OpenTelemetry → Jaeger
+- **Alerting**: Prometheus Alertmanager

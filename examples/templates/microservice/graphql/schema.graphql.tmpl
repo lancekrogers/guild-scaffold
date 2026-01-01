@@ -1,0 +1,77 @@
+"""
+{{ .vars.service_name }} GraphQL Schema
+"""
+
+type Query {
+  """Get a resource by ID"""
+  resource(id: ID!): Resource
+
+  """List all resources with pagination"""
+  resources(first: Int, after: String): ResourceConnection!
+
+  """Health check"""
+  health: Health!
+}
+
+type Mutation {
+  """Create a new resource"""
+  createResource(input: CreateResourceInput!): Resource!
+
+  """Update an existing resource"""
+  updateResource(id: ID!, input: UpdateResourceInput!): Resource!
+
+  """Delete a resource"""
+  deleteResource(id: ID!): DeleteResult!
+}
+
+type Resource {
+  id: ID!
+  name: String!
+  metadata: JSON
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+type ResourceConnection {
+  edges: [ResourceEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type ResourceEdge {
+  cursor: String!
+  node: Resource!
+}
+
+type PageInfo {
+  hasNextPage: Boolean!
+  hasPreviousPage: Boolean!
+  startCursor: String
+  endCursor: String
+}
+
+type Health {
+  status: String!
+  version: String!
+}
+
+type DeleteResult {
+  success: Boolean!
+  id: ID!
+}
+
+input CreateResourceInput {
+  name: String!
+  metadata: JSON
+}
+
+input UpdateResourceInput {
+  name: String
+  metadata: JSON
+}
+
+"""Custom scalar for JSON data"""
+scalar JSON
+
+"""Custom scalar for DateTime"""
+scalar DateTime

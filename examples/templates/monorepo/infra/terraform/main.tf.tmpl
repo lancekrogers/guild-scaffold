@@ -1,0 +1,87 @@
+# {{ .vars.project_name }} Infrastructure - Main Configuration
+# Terraform configuration for AWS infrastructure
+
+terraform {
+  required_version = ">= 1.0"
+
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
+    kubernetes = {
+      source  = "hashicorp/kubernetes"
+      version = "~> 2.0"
+    }
+  }
+
+  backend "s3" {
+    bucket         = "{{ .vars.project_name | lower }}-terraform-state"
+    key            = "infrastructure/terraform.tfstate"
+    region         = "{{ .vars.aws_region | default "us-west-2" }}"
+    encrypt        = true
+    dynamodb_table = "{{ .vars.project_name | lower }}-terraform-locks"
+  }
+}
+
+provider "aws" {
+  region = var.aws_region
+
+  default_tags {
+    tags = {
+      Project     = "{{ .vars.project_name }}"
+      Environment = var.environment
+      ManagedBy   = "Terraform"
+    }
+  }
+}
+
+# VPC Module
+module "vpc" {
+  source = "./modules/vpc"
+
+  project_name = var.project_name
+  environment  = var.environment
+  vpc_cidr     = var.vpc_cidr
+}
+
+# EKS Module
+module "eks" {
+  source = "./modules/eks"
+
+  project_name       = var.project_name
+  environment        = var.environment
+  vpc_id             = module.vpc.vpc_id
+  private_subnet_ids = module.vpc.private_subnet_ids
+  cluster_version    = var.eks_cluster_version
+  node_instance_type = var.eks_node_instance_type
+  node_min_size      = var.eks_node_min_size
+  node_max_size      = var.eks_node_max_size
+  node_desired_size  = var.eks_node_desired_size
+}
+
+# RDS Module
+module "rds" {
+  source = "./modules/rds"
+
+  project_name       = var.project_name
+  environment        = var.environment
+  vpc_id             = module.vpc.vpc_id
+  private_subnet_ids = module.vpc.private_subnet_ids
+  instance_class     = var.rds_instance_class
+  allocated_storage  = var.rds_allocated_storage
+  database_name      = var.database_name
+  master_username    = var.database_username
+}
+
+# Kubernetes provider configuration
+provider "kubernetes" {
+  host                   = module.eks.cluster_endpoint
+  cluster_ca_certificate = base64decode(module.eks.cluster_ca_certificate)
+
+  exec {
+    api_version = "client.authentication.k8s.io/v1beta1"
+    command     = "aws"
+    args        = ["eks", "get-token", "--cluster-name", module.eks.cluster_name]
+  }
+}

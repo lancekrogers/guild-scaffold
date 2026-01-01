@@ -1,0 +1,69 @@
+# {{ .vars.project_name }}
+
+{{ .vars.description | default "A dynamic project generated with Guild Scaffold." }}
+
+## Author
+
+{{ .vars.author | default "Guild Framework" }}
+
+## License
+
+{{ .vars.license | default "MIT" }}
+
+## Getting Started
+
+### Prerequisites
+
+- Go 1.21 or later
+
+### Installation
+
+```bash
+go mod download
+```
+
+### Running
+
+```bash
+go run ./src/...
+```
+
+Or build and run:
+
+```bash
+make build
+./bin/{{ .vars.project_name | lower }}
+```
+
+## Configuration
+
+Configuration is loaded from environment variables:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `APP_NAME` | {{ .vars.project_name }} | Application name |
+| `APP_VERSION` | 1.0.0 | Application version |
+| `LOG_LEVEL` | info | Logging level |
+| `DATA_DIR` | ./data | Data directory path |
+
+## Project Structure
+
+```
+{{ .vars.project_name | lower }}/
+├── src/
+│   ├── main.go      # Application entry point
+│   └── config.go    # Configuration handling
+├── config/          # Configuration files
+├── data/            # Runtime data
+├── logs/            # Application logs
+└── docs/            # Documentation
+```
+
+## Development
+
+```bash
+make dev    # Run in development mode
+make test   # Run tests
+make build  # Build binary
+make clean  # Clean build artifacts
+```

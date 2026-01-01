@@ -1,0 +1,128 @@
+// Package app contains gRPC handlers
+package app
+
+import (
+	"context"
+
+	"{{ .vars.module_path }}/api/proto"
+	"{{ .vars.module_path }}/internal/domain"
+	"github.com/google/uuid"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+)
+
+// GRPCHandler implements the gRPC service
+type GRPCHandler struct {
+	proto.UnimplementedServiceServer
+	service *domain.Service
+}
+
+// NewGRPCHandler creates a new gRPC handler
+func NewGRPCHandler(service *domain.Service) *GRPCHandler {
+	return &GRPCHandler{service: service}
+}
+
+// Create implements the Create RPC
+func (h *GRPCHandler) Create(ctx context.Context, req *proto.CreateRequest) (*proto.CreateResponse, error) {
+	entity, err := h.service.Create(ctx, req.Name, req.Metadata)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to create: %v", err)
+	}
+
+	return &proto.CreateResponse{
+		Id:        entity.ID.String(),
+		Name:      entity.Name,
+		CreatedAt: entity.CreatedAt.Unix(),
+	}, nil
+}
+
+// Get implements the Get RPC
+func (h *GRPCHandler) Get(ctx context.Context, req *proto.GetRequest) (*proto.GetResponse, error) {
+	id, err := uuid.Parse(req.Id)
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "invalid ID")
+	}
+
+	entity, err := h.service.Get(ctx, id)
+	if err != nil {
+		return nil, status.Errorf(codes.NotFound, "not found")
+	}
+
+	return &proto.GetResponse{
+		Id:        entity.ID.String(),
+		Name:      entity.Name,
+		Metadata:  entity.Metadata,
+		CreatedAt: entity.CreatedAt.Unix(),
+		UpdatedAt: entity.UpdatedAt.Unix(),
+	}, nil
+}
+
+// List implements the List RPC
+func (h *GRPCHandler) List(ctx context.Context, req *proto.ListRequest) (*proto.ListResponse, error) {
+	opts := domain.ListOptions{
+		PageSize:  int(req.PageSize),
+		PageToken: req.PageToken,
+	}
+
+	entities, nextToken, err := h.service.List(ctx, opts)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to list: %v", err)
+	}
+
+	items := make([]*proto.GetResponse, len(entities))
+	for i, e := range entities {
+		items[i] = &proto.GetResponse{
+			Id:        e.ID.String(),
+			Name:      e.Name,
+			Metadata:  e.Metadata,
+			CreatedAt: e.CreatedAt.Unix(),
+			UpdatedAt: e.UpdatedAt.Unix(),
+		}
+	}
+
+	return &proto.ListResponse{
+		Items:         items,
+		NextPageToken: nextToken,
+		TotalCount:    int32(len(items)),
+	}, nil
+}
+
+// Update implements the Update RPC
+func (h *GRPCHandler) Update(ctx context.Context, req *proto.UpdateRequest) (*proto.UpdateResponse, error) {
+	id, err := uuid.Parse(req.Id)
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "invalid ID")
+	}
+
+	entity, err := h.service.Update(ctx, id, req.Name, req.Metadata)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to update: %v", err)
+	}
+
+	return &proto.UpdateResponse{
+		Id:        entity.ID.String(),
+		UpdatedAt: entity.UpdatedAt.Unix(),
+	}, nil
+}
+
+// Delete implements the Delete RPC
+func (h *GRPCHandler) Delete(ctx context.Context, req *proto.DeleteRequest) (*proto.DeleteResponse, error) {
+	id, err := uuid.Parse(req.Id)
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "invalid ID")
+	}
+
+	if err := h.service.Delete(ctx, id); err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to delete: %v", err)
+	}
+
+	return &proto.DeleteResponse{Success: true}, nil
+}
+
+// Health implements the Health RPC
+func (h *GRPCHandler) Health(ctx context.Context, req *proto.HealthRequest) (*proto.HealthResponse, error) {
+	return &proto.HealthResponse{
+		Status:  "healthy",
+		Version: "1.0.0",
+	}, nil
+}

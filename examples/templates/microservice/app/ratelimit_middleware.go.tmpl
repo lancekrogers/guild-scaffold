@@ -1,0 +1,87 @@
+// Package app contains middleware
+package app
+
+import (
+	"net/http"
+	"sync"
+	"time"
+)
+
+// RateLimiter implements token bucket rate limiting
+type RateLimiter struct {
+	mu       sync.Mutex
+	buckets  map[string]*bucket
+	rate     int           // tokens per interval
+	interval time.Duration // refill interval
+	burst    int           // max tokens
+}
+
+type bucket struct {
+	tokens    int
+	lastCheck time.Time
+}
+
+// NewRateLimiter creates a new rate limiter
+func NewRateLimiter(rate int, interval time.Duration, burst int) *RateLimiter {
+	return &RateLimiter{
+		buckets:  make(map[string]*bucket),
+		rate:     rate,
+		interval: interval,
+		burst:    burst,
+	}
+}
+
+// Allow checks if a request is allowed
+func (rl *RateLimiter) Allow(key string) bool {
+	rl.mu.Lock()
+	defer rl.mu.Unlock()
+
+	b, exists := rl.buckets[key]
+	now := time.Now()
+
+	if !exists {
+		rl.buckets[key] = &bucket{
+			tokens:    rl.burst - 1,
+			lastCheck: now,
+		}
+		return true
+	}
+
+	// Refill tokens
+	elapsed := now.Sub(b.lastCheck)
+	refill := int(elapsed / rl.interval) * rl.rate
+	b.tokens = min(b.tokens+refill, rl.burst)
+	b.lastCheck = now
+
+	if b.tokens > 0 {
+		b.tokens--
+		return true
+	}
+
+	return false
+}
+
+// RateLimitMiddleware limits request rate per client
+func RateLimitMiddleware(limiter *RateLimiter) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Use IP as rate limit key
+			key := r.RemoteAddr
+
+			if !limiter.Allow(key) {
+				w.Header().Set("Retry-After", "1")
+				http.Error(w, "rate limit exceeded", http.StatusTooManyRequests)
+				return
+			}
+
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}

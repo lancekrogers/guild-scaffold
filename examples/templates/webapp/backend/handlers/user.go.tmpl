@@ -1,0 +1,69 @@
+// Package handlers provides HTTP request handlers
+package handlers
+
+import (
+	"encoding/json"
+	"net/http"
+
+	"{{ .vars.module_path }}/internal/middleware"
+	"{{ .vars.module_path }}/internal/services"
+)
+
+type UserHandler struct {
+	user *services.UserService
+}
+
+func NewUserHandler(user *services.UserService) *UserHandler {
+	return &UserHandler{user: user}
+}
+
+type UpdateUserRequest struct {
+	Name   string `json:"name,omitempty"`
+	Avatar string `json:"avatar,omitempty"`
+}
+
+func (h *UserHandler) Me(w http.ResponseWriter, r *http.Request) {
+	userID, ok := middleware.GetUserID(r.Context())
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	user, err := h.user.GetByID(r.Context(), userID)
+	if err != nil {
+		if err == services.ErrUserNotFound {
+			http.Error(w, "User not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, "Failed to get user", http.StatusInternalServerError)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, user)
+}
+
+func (h *UserHandler) Update(w http.ResponseWriter, r *http.Request) {
+	userID, ok := middleware.GetUserID(r.Context())
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	var req UpdateUserRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	user, err := h.user.Update(r.Context(), userID, req.Name, req.Avatar)
+	if err != nil {
+		if err == services.ErrUserNotFound {
+			http.Error(w, "User not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, "Failed to update user", http.StatusInternalServerError)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, user)
+}

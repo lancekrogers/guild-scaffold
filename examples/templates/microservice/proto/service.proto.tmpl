@@ -1,0 +1,86 @@
+syntax = "proto3";
+
+package {{ .vars.service_name | lower }};
+
+option go_package = "{{ .vars.module_path }}/api/proto";
+
+// {{ .vars.service_name }} service definition
+service {{ .vars.service_name }}Service {
+  // Create a new resource
+  rpc Create(CreateRequest) returns (CreateResponse);
+
+  // Get a resource by ID
+  rpc Get(GetRequest) returns (GetResponse);
+
+  // List resources
+  rpc List(ListRequest) returns (ListResponse);
+
+  // Update a resource
+  rpc Update(UpdateRequest) returns (UpdateResponse);
+
+  // Delete a resource
+  rpc Delete(DeleteRequest) returns (DeleteResponse);
+
+  // Health check
+  rpc Health(HealthRequest) returns (HealthResponse);
+}
+
+message CreateRequest {
+  string name = 1;
+  map<string, string> metadata = 2;
+}
+
+message CreateResponse {
+  string id = 1;
+  string name = 2;
+  int64 created_at = 3;
+}
+
+message GetRequest {
+  string id = 1;
+}
+
+message GetResponse {
+  string id = 1;
+  string name = 2;
+  map<string, string> metadata = 3;
+  int64 created_at = 4;
+  int64 updated_at = 5;
+}
+
+message ListRequest {
+  int32 page_size = 1;
+  string page_token = 2;
+}
+
+message ListResponse {
+  repeated GetResponse items = 1;
+  string next_page_token = 2;
+  int32 total_count = 3;
+}
+
+message UpdateRequest {
+  string id = 1;
+  string name = 2;
+  map<string, string> metadata = 3;
+}
+
+message UpdateResponse {
+  string id = 1;
+  int64 updated_at = 2;
+}
+
+message DeleteRequest {
+  string id = 1;
+}
+
+message DeleteResponse {
+  bool success = 1;
+}
+
+message HealthRequest {}
+
+message HealthResponse {
+  string status = 1;
+  string version = 2;
+}

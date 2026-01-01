@@ -1,0 +1,77 @@
+// Package infra implements Kafka messaging
+package infra
+
+import (
+	"context"
+	"encoding/json"
+
+	"github.com/segmentio/kafka-go"
+)
+
+// KafkaProducer produces messages to Kafka
+type KafkaProducer struct {
+	writer *kafka.Writer
+}
+
+// NewKafkaProducer creates a new Kafka producer
+func NewKafkaProducer(brokers []string, topic string) *KafkaProducer {
+	writer := &kafka.Writer{
+		Addr:     kafka.TCP(brokers...),
+		Topic:    topic,
+		Balancer: &kafka.LeastBytes{},
+	}
+	return &KafkaProducer{writer: writer}
+}
+
+// Publish sends a message to Kafka
+func (p *KafkaProducer) Publish(ctx context.Context, key string, value interface{}) error {
+	data, err := json.Marshal(value)
+	if err != nil {
+		return err
+	}
+	return p.writer.WriteMessages(ctx, kafka.Message{
+		Key:   []byte(key),
+		Value: data,
+	})
+}
+
+// Close closes the producer
+func (p *KafkaProducer) Close() error {
+	return p.writer.Close()
+}
+
+// KafkaConsumer consumes messages from Kafka
+type KafkaConsumer struct {
+	reader *kafka.Reader
+}
+
+// NewKafkaConsumer creates a new Kafka consumer
+func NewKafkaConsumer(brokers []string, groupID, topic string) *KafkaConsumer {
+	reader := kafka.NewReader(kafka.ReaderConfig{
+		Brokers:  brokers,
+		GroupID:  groupID,
+		Topic:    topic,
+		MinBytes: 10e3,
+		MaxBytes: 10e6,
+	})
+	return &KafkaConsumer{reader: reader}
+}
+
+// Consume reads messages from Kafka
+func (c *KafkaConsumer) Consume(ctx context.Context, handler func(context.Context, []byte) error) error {
+	for {
+		msg, err := c.reader.ReadMessage(ctx)
+		if err != nil {
+			return err
+		}
+		if err := handler(ctx, msg.Value); err != nil {
+			// Log error but continue processing
+			continue
+		}
+	}
+}
+
+// Close closes the consumer
+func (c *KafkaConsumer) Close() error {
+	return c.reader.Close()
+}

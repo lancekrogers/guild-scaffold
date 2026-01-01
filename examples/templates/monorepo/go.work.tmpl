@@ -1,0 +1,20 @@
+go {{ .vars.go_version | default "1.22" }}
+
+use (
+	// Shared libraries
+	./libs/common
+	./libs/database
+	./libs/messaging
+	./libs/auth
+
+	// Services
+	./services/auth-service
+	./services/user-service
+	./services/order-service
+	./services/payment-service
+
+	// Tools
+	./tools/migrator
+	./tools/seeder
+	./tools/cli
+)

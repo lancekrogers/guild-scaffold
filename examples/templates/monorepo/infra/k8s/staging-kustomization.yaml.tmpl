@@ -1,0 +1,41 @@
+# Kustomization for Staging Environment
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: {{ .vars.project_name | lower }}-staging
+
+namePrefix: staging-
+
+commonLabels:
+  environment: staging
+  app.kubernetes.io/part-of: {{ .vars.project_name | lower }}
+
+resources:
+  - ../../base
+
+patches:
+  - patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 2
+    target:
+      kind: Deployment
+
+configMapGenerator:
+  - name: {{ .vars.project_name | lower }}-config
+    behavior: merge
+    literals:
+      - ENVIRONMENT=staging
+      - LOG_LEVEL=info
+      - METRICS_ENABLED=true
+      - TRACING_ENABLED=true
+
+images:
+  - name: auth-service
+    newTag: staging
+  - name: user-service
+    newTag: staging
+  - name: order-service
+    newTag: staging
+  - name: payment-service
+    newTag: staging

@@ -1,0 +1,26 @@
+# {{ .vars.service_name }} Production Configuration
+
+server:
+  port: 8080
+
+database:
+  ssl_mode: require
+  max_open_conns: 50
+  max_idle_conns: 10
+
+cache:
+  enabled: true
+
+messaging:
+  enabled: true
+
+observability:
+  metrics:
+    enabled: true
+  tracing:
+    enabled: true
+  logging:
+    level: info
+
+auth:
+  enabled: true

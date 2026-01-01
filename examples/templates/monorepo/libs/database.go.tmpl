@@ -1,0 +1,86 @@
+// Package database provides database connectivity and utilities
+package database
+
+import (
+	"context"
+	"database/sql"
+	"time"
+
+	_ "github.com/lib/pq"
+)
+
+// PostgresDB wraps a PostgreSQL database connection
+type PostgresDB struct {
+	db *sql.DB
+}
+
+// NewPostgresConnection creates a new PostgreSQL connection
+func NewPostgresConnection(ctx context.Context, dsn string) (*PostgresDB, error) {
+	db, err := sql.Open("postgres", dsn)
+	if err != nil {
+		return nil, err
+	}
+
+	// Configure connection pool
+	db.SetMaxOpenConns(25)
+	db.SetMaxIdleConns(10)
+	db.SetConnMaxLifetime(5 * time.Minute)
+	db.SetConnMaxIdleTime(1 * time.Minute)
+
+	// Test connection
+	if err := db.PingContext(ctx); err != nil {
+		return nil, err
+	}
+
+	return &PostgresDB{db: db}, nil
+}
+
+// Close closes the database connection
+func (p *PostgresDB) Close() error {
+	return p.db.Close()
+}
+
+// Ping checks database connectivity
+func (p *PostgresDB) Ping(ctx context.Context) error {
+	return p.db.PingContext(ctx)
+}
+
+// DB returns the underlying sql.DB
+func (p *PostgresDB) DB() *sql.DB {
+	return p.db
+}
+
+// QueryRow executes a query that returns at most one row
+func (p *PostgresDB) QueryRow(ctx context.Context, query string, args ...interface{}) *sql.Row {
+	return p.db.QueryRowContext(ctx, query, args...)
+}
+
+// Query executes a query that returns rows
+func (p *PostgresDB) Query(ctx context.Context, query string, args ...interface{}) (*sql.Rows, error) {
+	return p.db.QueryContext(ctx, query, args...)
+}
+
+// Exec executes a query that doesn't return rows
+func (p *PostgresDB) Exec(ctx context.Context, query string, args ...interface{}) (sql.Result, error) {
+	return p.db.ExecContext(ctx, query, args...)
+}
+
+// BeginTx starts a transaction
+func (p *PostgresDB) BeginTx(ctx context.Context) (*sql.Tx, error) {
+	return p.db.BeginTx(ctx, nil)
+}
+
+// Transaction executes a function within a transaction
+func (p *PostgresDB) Transaction(ctx context.Context, fn func(tx *sql.Tx) error) error {
+	tx, err := p.BeginTx(ctx)
+	if err != nil {
+		return err
+	}
+
+	if err := fn(tx); err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	return tx.Commit()
+}

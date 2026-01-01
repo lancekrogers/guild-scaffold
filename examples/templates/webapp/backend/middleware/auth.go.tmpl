@@ -1,0 +1,63 @@
+// Package middleware provides HTTP middleware functions
+package middleware
+
+import (
+	"context"
+	"net/http"
+	"strings"
+
+	"{{ .vars.module_path }}/internal/utils"
+)
+
+type contextKey string
+
+const (
+	UserIDKey contextKey = "user_id"
+	EmailKey  contextKey = "email"
+)
+
+// Auth middleware validates JWT tokens
+func Auth(secret string) func(http.HandlerFunc) http.HandlerFunc {
+	return func(next http.HandlerFunc) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			authHeader := r.Header.Get("Authorization")
+			if authHeader == "" {
+				http.Error(w, "Authorization header required", http.StatusUnauthorized)
+				return
+			}
+
+			parts := strings.SplitN(authHeader, " ", 2)
+			if len(parts) != 2 || strings.ToLower(parts[0]) != "bearer" {
+				http.Error(w, "Invalid authorization header", http.StatusUnauthorized)
+				return
+			}
+
+			claims, err := utils.ValidateJWT(parts[1], secret)
+			if err != nil {
+				if err == utils.ErrTokenExpired {
+					http.Error(w, "Token expired", http.StatusUnauthorized)
+					return
+				}
+				http.Error(w, "Invalid token", http.StatusUnauthorized)
+				return
+			}
+
+			// Add user info to context
+			ctx := context.WithValue(r.Context(), UserIDKey, claims.UserID)
+			ctx = context.WithValue(ctx, EmailKey, claims.Email)
+			next.ServeHTTP(w, r.WithContext(ctx))
+		}
+	}
+}
+
+// GetUserID retrieves user ID from context
+func GetUserID(ctx context.Context) (string, bool) {
+	id, ok := ctx.Value(UserIDKey).(string)
+	return id, ok
+}
+
+// GetEmail retrieves email from context
+func GetEmail(ctx context.Context) (string, bool) {
+	email, ok := ctx.Value(EmailKey).(string)
+	return email, ok
+}

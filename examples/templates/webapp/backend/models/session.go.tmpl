@@ -1,0 +1,31 @@
+// Package models defines data structures
+package models
+
+import (
+	"time"
+)
+
+// Session represents an authentication session
+type Session struct {
+	ID           string    `json:"id"`
+	UserID       string    `json:"user_id"`
+	RefreshToken string    `json:"-"`
+	UserAgent    string    `json:"user_agent"`
+	IPAddress    string    `json:"ip_address"`
+	ExpiresAt    time.Time `json:"expires_at"`
+	CreatedAt    time.Time `json:"created_at"`
+}
+
+// IsExpired checks if the session has expired
+func (s *Session) IsExpired() bool {
+	return time.Now().After(s.ExpiresAt)
+}
+
+// SessionCreate represents data for creating a session
+type SessionCreate struct {
+	UserID       string
+	RefreshToken string
+	UserAgent    string
+	IPAddress    string
+	ExpiresAt    time.Time
+}

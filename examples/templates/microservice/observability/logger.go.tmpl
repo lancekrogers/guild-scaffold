@@ -1,0 +1,62 @@
+// Package observability contains structured logging
+package observability
+
+import (
+	"context"
+	"io"
+	"log/slog"
+	"os"
+)
+
+// Logger wraps slog for structured logging
+type Logger struct {
+	*slog.Logger
+}
+
+// NewLogger creates a new structured logger
+func NewLogger() *Logger {
+	return NewLoggerWithWriter(os.Stdout, getLogLevel())
+}
+
+// NewLoggerWithWriter creates a logger with custom output
+func NewLoggerWithWriter(w io.Writer, level slog.Level) *Logger {
+	opts := &slog.HandlerOptions{
+		Level: level,
+	}
+
+	handler := slog.NewJSONHandler(w, opts)
+	return &Logger{slog.New(handler)}
+}
+
+func getLogLevel() slog.Level {
+	switch os.Getenv("LOG_LEVEL") {
+	case "debug":
+		return slog.LevelDebug
+	case "warn":
+		return slog.LevelWarn
+	case "error":
+		return slog.LevelError
+	default:
+		return slog.LevelInfo
+	}
+}
+
+// With returns a logger with additional attributes
+func (l *Logger) With(args ...any) *Logger {
+	return &Logger{l.Logger.With(args...)}
+}
+
+// WithContext returns a logger with context values
+func (l *Logger) WithContext(ctx context.Context) *Logger {
+	// Add trace ID from context if available
+	if traceID := ctx.Value("trace_id"); traceID != nil {
+		return l.With("trace_id", traceID)
+	}
+	return l
+}
+
+// Fatal logs a fatal error and exits
+func (l *Logger) Fatal(msg string, args ...any) {
+	l.Error(msg, args...)
+	os.Exit(1)
+}

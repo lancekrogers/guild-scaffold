@@ -1,0 +1,36 @@
+-- {{ .vars.service_name }} Initial Migration
+-- +migrate Up
+
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+CREATE TABLE IF NOT EXISTS entities (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name VARCHAR(255) NOT NULL,
+    metadata JSONB DEFAULT '{}',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX idx_entities_name ON entities(name);
+CREATE INDEX idx_entities_created_at ON entities(created_at);
+CREATE INDEX idx_entities_metadata ON entities USING GIN(metadata);
+
+-- Trigger to auto-update updated_at
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+CREATE TRIGGER update_entities_updated_at
+    BEFORE UPDATE ON entities
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
+-- +migrate Down
+
+DROP TRIGGER IF EXISTS update_entities_updated_at ON entities;
+DROP FUNCTION IF EXISTS update_updated_at_column();
+DROP TABLE IF EXISTS entities;

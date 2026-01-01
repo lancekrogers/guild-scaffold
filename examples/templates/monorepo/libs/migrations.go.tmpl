@@ -1,0 +1,190 @@
+// Package database provides database connectivity and utilities
+package database
+
+import (
+	"context"
+	"database/sql"
+	"embed"
+	"fmt"
+	"io/fs"
+	"path/filepath"
+	"sort"
+	"strings"
+)
+
+// Migrator handles database migrations
+type Migrator struct {
+	db         *PostgresDB
+	migrations embed.FS
+	tableName  string
+}
+
+// Migration represents a database migration
+type Migration struct {
+	Version     string
+	Description string
+	Up          string
+	Down        string
+}
+
+// NewMigrator creates a new Migrator instance
+func NewMigrator(db *PostgresDB, migrations embed.FS) *Migrator {
+	return &Migrator{
+		db:         db,
+		migrations: migrations,
+		tableName:  "schema_migrations",
+	}
+}
+
+// Initialize creates the migrations tracking table
+func (m *Migrator) Initialize(ctx context.Context) error {
+	query := fmt.Sprintf(`
+		CREATE TABLE IF NOT EXISTS %s (
+			version VARCHAR(255) PRIMARY KEY,
+			applied_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+		)
+	`, m.tableName)
+
+	_, err := m.db.Exec(ctx, query)
+	return err
+}
+
+// Up runs all pending migrations
+func (m *Migrator) Up(ctx context.Context) error {
+	if err := m.Initialize(ctx); err != nil {
+		return fmt.Errorf("failed to initialize migrations table: %w", err)
+	}
+
+	applied, err := m.getAppliedMigrations(ctx)
+	if err != nil {
+		return err
+	}
+
+	migrations, err := m.loadMigrations()
+	if err != nil {
+		return err
+	}
+
+	for _, migration := range migrations {
+		if applied[migration.Version] {
+			continue
+		}
+
+		if err := m.runMigration(ctx, migration, "up"); err != nil {
+			return fmt.Errorf("migration %s failed: %w", migration.Version, err)
+		}
+	}
+
+	return nil
+}
+
+// Down rolls back the last migration
+func (m *Migrator) Down(ctx context.Context) error {
+	applied, err := m.getAppliedMigrations(ctx)
+	if err != nil {
+		return err
+	}
+
+	migrations, err := m.loadMigrations()
+	if err != nil {
+		return err
+	}
+
+	// Find last applied migration
+	var lastApplied *Migration
+	for i := len(migrations) - 1; i >= 0; i-- {
+		if applied[migrations[i].Version] {
+			lastApplied = &migrations[i]
+			break
+		}
+	}
+
+	if lastApplied == nil {
+		return nil
+	}
+
+	return m.runMigration(ctx, *lastApplied, "down")
+}
+
+func (m *Migrator) getAppliedMigrations(ctx context.Context) (map[string]bool, error) {
+	query := fmt.Sprintf("SELECT version FROM %s", m.tableName)
+	rows, err := m.db.Query(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	applied := make(map[string]bool)
+	for rows.Next() {
+		var version string
+		if err := rows.Scan(&version); err != nil {
+			return nil, err
+		}
+		applied[version] = true
+	}
+
+	return applied, rows.Err()
+}
+
+func (m *Migrator) loadMigrations() ([]Migration, error) {
+	var migrations []Migration
+
+	err := fs.WalkDir(m.migrations, ".", func(path string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() || !strings.HasSuffix(path, ".up.sql") {
+			return err
+		}
+
+		version := strings.TrimSuffix(filepath.Base(path), ".up.sql")
+
+		upContent, err := fs.ReadFile(m.migrations, path)
+		if err != nil {
+			return err
+		}
+
+		downPath := strings.Replace(path, ".up.sql", ".down.sql", 1)
+		downContent, _ := fs.ReadFile(m.migrations, downPath)
+
+		migrations = append(migrations, Migration{
+			Version: version,
+			Up:      string(upContent),
+			Down:    string(downContent),
+		})
+
+		return nil
+	})
+
+	sort.Slice(migrations, func(i, j int) bool {
+		return migrations[i].Version < migrations[j].Version
+	})
+
+	return migrations, err
+}
+
+func (m *Migrator) runMigration(ctx context.Context, migration Migration, direction string) error {
+	return m.db.Transaction(ctx, func(tx *sql.Tx) error {
+		var query string
+		if direction == "up" {
+			query = migration.Up
+		} else {
+			query = migration.Down
+		}
+
+		if _, err := tx.ExecContext(ctx, query); err != nil {
+			return err
+		}
+
+		if direction == "up" {
+			_, err := tx.ExecContext(ctx,
+				fmt.Sprintf("INSERT INTO %s (version) VALUES ($1)", m.tableName),
+				migration.Version,
+			)
+			return err
+		}
+
+		_, err := tx.ExecContext(ctx,
+			fmt.Sprintf("DELETE FROM %s WHERE version = $1", m.tableName),
+			migration.Version,
+		)
+		return err
+	})
+}

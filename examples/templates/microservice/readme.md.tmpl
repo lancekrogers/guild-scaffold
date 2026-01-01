@@ -1,0 +1,94 @@
+# {{ .vars.service_name }}
+
+{{ .vars.description | default "A production-ready microservice built with Go." }}
+
+## Features
+
+- RESTful API with OpenAPI specification
+- gRPC support with Protocol Buffers
+- PostgreSQL database with migrations
+- Redis caching
+- Kafka/RabbitMQ messaging
+- Prometheus metrics
+- Jaeger distributed tracing
+- Structured JSON logging
+- JWT authentication
+- Docker and Kubernetes ready
+- CI/CD pipelines
+
+## Quick Start
+
+### Prerequisites
+
+- Go 1.22+
+- Docker & Docker Compose
+- Make
+
+### Development
+
+```bash
+# Start dependencies
+docker-compose up -d postgres redis
+
+# Run migrations
+make migrate-up
+
+# Start server
+make dev
+```
+
+### Testing
+
+```bash
+# Unit tests
+make test
+
+# Integration tests
+make test-integration
+
+# Load tests
+make test-load
+```
+
+### Building
+
+```bash
+# Build binary
+make build
+
+# Build Docker image
+make docker-build
+```
+
+## Project Structure
+
+```
+{{ .vars.service_name | lower }}/
+├── api/                # API definitions
+│   ├── proto/         # Protocol Buffers
+│   ├── openapi/       # OpenAPI specs
+│   └── graphql/       # GraphQL schema
+├── cmd/               # Application entry points
+├── internal/          # Private application code
+├── configs/           # Configuration files
+├── deployments/       # Deployment manifests
+├── docs/              # Documentation
+└── test/              # Test suites
+```
+
+## API Documentation
+
+- OpenAPI: [docs/API.md](docs/API.md)
+- Architecture: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+
+## Configuration
+
+See [configs/](configs/) for configuration options.
+
+## Deployment
+
+See [deployments/](deployments/) for Kubernetes and Helm charts.
+
+## License
+
+{{ .vars.license | default "MIT" }}

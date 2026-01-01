@@ -1,0 +1,45 @@
+# Kustomization for Development Environment
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: {{ .vars.project_name | lower }}-dev
+
+namePrefix: dev-
+
+commonLabels:
+  environment: development
+  app.kubernetes.io/part-of: {{ .vars.project_name | lower }}
+
+resources:
+  - ../../base
+
+# Development-specific patches
+patches:
+  - patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 1
+    target:
+      kind: Deployment
+
+configMapGenerator:
+  - name: {{ .vars.project_name | lower }}-config
+    behavior: merge
+    literals:
+      - ENVIRONMENT=development
+      - LOG_LEVEL=debug
+      - METRICS_ENABLED=true
+      - TRACING_ENABLED=true
+
+# Resource limits for dev
+components: []
+
+images:
+  - name: auth-service
+    newTag: dev
+  - name: user-service
+    newTag: dev
+  - name: order-service
+    newTag: dev
+  - name: payment-service
+    newTag: dev

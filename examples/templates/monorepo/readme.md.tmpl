@@ -1,0 +1,106 @@
+# {{ .vars.project_name }}
+
+{{ .vars.description | default "A production-ready microservices monorepo built with Go." }}
+
+## Features
+
+- **Microservices Architecture**: Independent, scalable services
+- **Shared Libraries**: Common code for consistency
+- **Infrastructure as Code**: Terraform modules for AWS
+- **Kubernetes Ready**: Helm charts and Kustomize overlays
+- **CI/CD Pipelines**: GitHub Actions and GitLab CI
+- **Full Observability**: Metrics, logging, and tracing
+
+## Services
+
+| Service | Description | Port |
+|---------|-------------|------|
+| auth-service | Authentication and authorization | 8081 |
+| user-service | User management | 8082 |
+| order-service | Order processing | 8083 |
+| payment-service | Payment processing | 8084 |
+
+## Quick Start
+
+### Prerequisites
+
+- Go {{ .vars.go_version | default "1.22" }}+
+- Docker & Docker Compose
+- Make
+
+### Development
+
+```bash
+# Set up development environment
+./scripts/setup-dev.sh
+
+# Start all services
+make dev
+
+# Run tests
+make test
+
+# Build all binaries
+make build
+```
+
+### Using Docker Compose
+
+```bash
+# Start infrastructure
+docker-compose up -d postgres redis kafka
+
+# Build and start services
+docker-compose up -d --build
+```
+
+## Project Structure
+
+```
+{{ .vars.project_name | lower }}/
+├── services/           # Microservices
+│   ├── auth-service/
+│   ├── user-service/
+│   ├── order-service/
+│   └── payment-service/
+├── libs/               # Shared libraries
+│   ├── common/
+│   ├── database/
+│   ├── messaging/
+│   └── auth/
+├── tools/              # Development tools
+│   ├── migrator/
+│   ├── seeder/
+│   └── cli/
+├── infrastructure/     # IaC and deployment
+│   ├── terraform/
+│   ├── kubernetes/
+│   └── helm/
+├── scripts/            # Automation scripts
+├── docs/               # Documentation
+└── docker-compose.yaml
+```
+
+## Documentation
+
+- [Architecture](docs/ARCHITECTURE.md)
+- [Contributing](docs/CONTRIBUTING.md)
+- [API Documentation](docs/api/)
+
+## Deployment
+
+### Staging
+
+```bash
+./scripts/deploy.sh --env staging
+```
+
+### Production
+
+```bash
+./scripts/deploy.sh --env production
+```
+
+## License
+
+{{ .vars.license | default "MIT" }}

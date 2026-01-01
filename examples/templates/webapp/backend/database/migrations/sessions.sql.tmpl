@@ -1,0 +1,22 @@
+-- Sessions table migration
+-- Up
+
+CREATE TABLE IF NOT EXISTS sessions (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    refresh_token VARCHAR(500) NOT NULL UNIQUE,
+    user_agent TEXT,
+    ip_address VARCHAR(45),
+    expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
+CREATE INDEX IF NOT EXISTS idx_sessions_refresh_token ON sessions(refresh_token);
+CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at);
+
+-- Cleanup expired sessions periodically (run via cron or scheduled job)
+-- DELETE FROM sessions WHERE expires_at < CURRENT_TIMESTAMP;
+
+-- Down
+-- DROP TABLE IF EXISTS sessions;

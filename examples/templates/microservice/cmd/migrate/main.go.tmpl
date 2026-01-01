@@ -1,0 +1,57 @@
+// {{ .vars.service_name }} Database Migration Tool
+package main
+
+import (
+	"flag"
+	"fmt"
+	"log"
+	"os"
+
+	"{{ .vars.module_path }}/internal/infrastructure/database/postgres"
+)
+
+func main() {
+	// Parse flags
+	up := flag.Bool("up", false, "Run migrations up")
+	down := flag.Bool("down", false, "Run migrations down")
+	version := flag.Int("version", 0, "Migrate to specific version")
+	flag.Parse()
+
+	// Load database URL
+	dbURL := os.Getenv("DATABASE_URL")
+	if dbURL == "" {
+		log.Fatal("DATABASE_URL is required")
+	}
+
+	// Connect to database
+	db, err := postgres.NewConnection(dbURL)
+	if err != nil {
+		log.Fatalf("Failed to connect: %v", err)
+	}
+	defer db.Close()
+
+	// Run migrations
+	switch {
+	case *up:
+		if err := postgres.MigrateUp(db); err != nil {
+			log.Fatalf("Migration up failed: %v", err)
+		}
+		fmt.Println("Migrations applied successfully")
+
+	case *down:
+		if err := postgres.MigrateDown(db); err != nil {
+			log.Fatalf("Migration down failed: %v", err)
+		}
+		fmt.Println("Migrations rolled back")
+
+	case *version > 0:
+		if err := postgres.MigrateTo(db, *version); err != nil {
+			log.Fatalf("Migration to version %d failed: %v", *version, err)
+		}
+		fmt.Printf("Migrated to version %d\n", *version)
+
+	default:
+		fmt.Println("Usage: migrate [-up|-down|-version N]")
+		flag.PrintDefaults()
+	}
+}

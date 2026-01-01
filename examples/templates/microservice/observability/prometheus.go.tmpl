@@ -1,0 +1,80 @@
+// Package observability contains metrics collection
+package observability
+
+import (
+	"net/http"
+	"time"
+
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+)
+
+// Metrics holds Prometheus metrics
+type Metrics struct {
+	requestsTotal    *prometheus.CounterVec
+	requestDuration  *prometheus.HistogramVec
+	requestsInFlight prometheus.Gauge
+}
+
+// NewMetrics creates new Prometheus metrics
+func NewMetrics(namespace string) *Metrics {
+	return &Metrics{
+		requestsTotal: promauto.NewCounterVec(
+			prometheus.CounterOpts{
+				Namespace: namespace,
+				Name:      "http_requests_total",
+				Help:      "Total number of HTTP requests",
+			},
+			[]string{"method", "path", "status"},
+		),
+		requestDuration: promauto.NewHistogramVec(
+			prometheus.HistogramOpts{
+				Namespace: namespace,
+				Name:      "http_request_duration_seconds",
+				Help:      "HTTP request duration in seconds",
+				Buckets:   prometheus.DefBuckets,
+			},
+			[]string{"method", "path"},
+		),
+		requestsInFlight: promauto.NewGauge(
+			prometheus.GaugeOpts{
+				Namespace: namespace,
+				Name:      "http_requests_in_flight",
+				Help:      "Number of HTTP requests currently being processed",
+			},
+		),
+	}
+}
+
+// Handler returns the Prometheus metrics handler
+func (m *Metrics) Handler() http.Handler {
+	return promhttp.Handler()
+}
+
+// Middleware wraps HTTP handlers with metrics collection
+func (m *Metrics) Middleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		m.requestsInFlight.Inc()
+		defer m.requestsInFlight.Dec()
+
+		start := time.Now()
+		wrapped := &responseWriter{ResponseWriter: w, status: http.StatusOK}
+
+		next.ServeHTTP(wrapped, r)
+
+		duration := time.Since(start).Seconds()
+		m.requestDuration.WithLabelValues(r.Method, r.URL.Path).Observe(duration)
+		m.requestsTotal.WithLabelValues(r.Method, r.URL.Path, http.StatusText(wrapped.status)).Inc()
+	})
+}
+
+type responseWriter struct {
+	http.ResponseWriter
+	status int
+}
+
+func (rw *responseWriter) WriteHeader(code int) {
+	rw.status = code
+	rw.ResponseWriter.WriteHeader(code)
+}

@@ -1,0 +1,98 @@
+# {{ .vars.project_name }} CD Pipeline
+name: CD
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+env:
+  GO_VERSION: "{{ .vars.go_version | default "1.22" }}"
+
+jobs:
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{`{{ env.GO_VERSION }}`}}
+
+      - name: Login to Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{`{{ secrets.REGISTRY_URL }}`}}
+          username: ${{`{{ secrets.REGISTRY_USERNAME }}`}}
+          password: ${{`{{ secrets.REGISTRY_PASSWORD }}`}}
+
+      - name: Build and Push Images
+        run: |
+          VERSION=${{`{{ github.ref_name }}`}}
+          for service in auth-service user-service order-service payment-service; do
+            docker build -f services/${service}/Dockerfile \
+              -t ${{`{{ secrets.REGISTRY_URL }}`}}/${service}:${VERSION} \
+              -t ${{`{{ secrets.REGISTRY_URL }}`}}/${service}:latest \
+              .
+            docker push ${{`{{ secrets.REGISTRY_URL }}`}}/${service}:${VERSION}
+            docker push ${{`{{ secrets.REGISTRY_URL }}`}}/${service}:latest
+          done
+
+  deploy-staging:
+    name: Deploy to Staging
+    needs: release
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v4
+
+      - name: Configure kubectl
+        run: |
+          mkdir -p ~/.kube
+          echo "${{`{{ secrets.KUBECONFIG_STAGING }}`}}" | base64 -d > ~/.kube/config
+
+      - name: Deploy to Staging
+        run: |
+          VERSION=${{`{{ github.ref_name }}`}}
+          ./scripts/deploy.sh --env staging --version ${VERSION}
+
+      - name: Verify Deployment
+        run: |
+          kubectl rollout status deployment -n {{ .vars.project_name | lower }}-staging --timeout=300s
+
+  deploy-production:
+    name: Deploy to Production
+    needs: deploy-staging
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v4
+
+      - name: Configure kubectl
+        run: |
+          mkdir -p ~/.kube
+          echo "${{`{{ secrets.KUBECONFIG_PRODUCTION }}`}}" | base64 -d > ~/.kube/config
+
+      - name: Deploy to Production
+        run: |
+          VERSION=${{`{{ github.ref_name }}`}}
+          ./scripts/deploy.sh --env production --version ${VERSION}
+
+      - name: Verify Deployment
+        run: |
+          kubectl rollout status deployment -n {{ .vars.project_name | lower }}-prod --timeout=300s
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          generate_release_notes: true
