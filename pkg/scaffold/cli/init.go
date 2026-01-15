@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/guild-framework/guild-core/pkg/gerror"
-	"github.com/guild-framework/guild-scaffold/pkg/scaffold"
+	"github.com/lancekrogers/guild-scaffold/pkg/scaffold"
 )
 
 // ExecuteInit executes the scaffold initialization process

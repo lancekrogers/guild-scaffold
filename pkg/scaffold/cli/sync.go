@@ -17,7 +17,7 @@ import (
 	"time"
 
 	"github.com/guild-framework/guild-core/pkg/gerror"
-	"github.com/guild-framework/guild-scaffold/pkg/scaffold/config"
+	"github.com/lancekrogers/guild-scaffold/pkg/scaffold/config"
 	"gopkg.in/yaml.v3"
 )
 

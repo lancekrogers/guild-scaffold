@@ -14,7 +14,7 @@ import (
 // Default sync configuration
 const (
 	// DefaultSyncRepo is the default GitHub repository to sync from
-	DefaultSyncRepo = "github.com/guild-framework/guild-scaffold"
+	DefaultSyncRepo = "github.com/lancekrogers/guild-scaffold"
 
 	// DefaultSyncBranch is the default branch to sync from
 	DefaultSyncBranch = "main"

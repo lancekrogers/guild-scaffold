@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 
 	"github.com/guild-framework/guild-core/pkg/gerror"
-	"github.com/guild-framework/guild-scaffold/pkg/scaffold/config"
+	"github.com/lancekrogers/guild-scaffold/pkg/scaffold/config"
 )
 
 // RegistryLoader loads and merges scaffold registries from multiple sources.

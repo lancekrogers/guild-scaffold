@@ -11,7 +11,7 @@ import (
 	"strings"
 
 	"github.com/guild-framework/guild-core/pkg/gerror"
-	"github.com/guild-framework/guild-scaffold/pkg/scaffold"
+	"github.com/lancekrogers/guild-scaffold/pkg/scaffold"
 	"gopkg.in/yaml.v3"
 )
 

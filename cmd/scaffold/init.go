@@ -12,7 +12,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/guild-framework/guild-core/pkg/gerror"
-	"github.com/guild-framework/guild-scaffold/pkg/scaffold/cli"
+	"github.com/lancekrogers/guild-scaffold/pkg/scaffold/cli"
 )
 
 var initCmd = &cobra.Command{

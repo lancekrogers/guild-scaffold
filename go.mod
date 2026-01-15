@@ -1,4 +1,4 @@
-module github.com/guild-framework/guild-scaffold
+module github.com/lancekrogers/guild-scaffold
 
 go 1.24.2
 
