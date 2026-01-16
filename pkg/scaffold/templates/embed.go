@@ -4,10 +4,9 @@
 package templates
 
 import (
-	"fmt"
 	"embed"
+	"fmt"
 	"io/fs"
-
 )
 
 // EmbeddedTemplates contains the embedded template files
