@@ -5,11 +5,11 @@ package scaffold
 
 import (
 	"context"
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
 
-	"github.com/guild-framework/guild-core/pkg/gerror"
 	"gopkg.in/yaml.v3"
 )
 
@@ -26,7 +26,7 @@ const (
 )
 
 // RegistryConfig represents a scaffold registry configuration file.
-// Found at ~/.guild/scaffold.yaml (global) or .campaign/scaffold.yaml (project).
+// Found at ~/.guild/scaffold.yaml (global) or .campaign/scaffold.yaml (project)
 //
 // Example:
 //
@@ -189,7 +189,7 @@ func (r *Registry) Merge(other *Registry) {
 // LoadRegistryFromFile loads a registry from a YAML file.
 func LoadRegistryFromFile(ctx context.Context, path string) (*Registry, error) {
 	if err := ctx.Err(); err != nil {
-		return nil, gerror.Wrap(err, gerror.ErrCodeCancelled, "context cancelled")
+		return nil, fmt.Errorf("context cancelled: %w", err)
 	}
 
 	// Expand ~ to home directory
@@ -201,14 +201,12 @@ func LoadRegistryFromFile(ctx context.Context, path string) (*Registry, error) {
 			// Not an error - registry file is optional
 			return NewRegistry(), nil
 		}
-		return nil, gerror.Wrap(err, gerror.ErrCodeIO, "failed to read registry file").
-			WithDetails("path", expandedPath)
+		return nil, fmt.Errorf("failed to read registry file (path=%v): %w", expandedPath, err)
 	}
 
 	var config RegistryConfig
 	if err := yaml.Unmarshal(data, &config); err != nil {
-		return nil, gerror.Wrap(err, gerror.ErrCodeParsing, "failed to parse registry file").
-			WithDetails("path", expandedPath)
+		return nil, fmt.Errorf("failed to parse registry file (path=%v): %w", expandedPath, err)
 	}
 
 	registry := NewRegistry()
@@ -233,20 +231,18 @@ func LoadRegistryFromFile(ctx context.Context, path string) (*Registry, error) {
 // The directory must contain a scaffold.yaml file.
 func LoadScaffoldDefinition(ctx context.Context, scaffoldDir string) (*ScaffoldDefinition, error) {
 	if err := ctx.Err(); err != nil {
-		return nil, gerror.Wrap(err, gerror.ErrCodeCancelled, "context cancelled")
+		return nil, fmt.Errorf("context cancelled: %w", err)
 	}
 
 	scaffoldPath := filepath.Join(scaffoldDir, "scaffold.yaml")
 	data, err := os.ReadFile(scaffoldPath)
 	if err != nil {
-		return nil, gerror.Wrap(err, gerror.ErrCodeIO, "failed to read scaffold definition").
-			WithDetails("path", scaffoldPath)
+		return nil, fmt.Errorf("failed to read scaffold definition (path=%v): %w", scaffoldPath, err)
 	}
 
 	var def ScaffoldDefinition
 	if err := yaml.Unmarshal(data, &def); err != nil {
-		return nil, gerror.Wrap(err, gerror.ErrCodeParsing, "failed to parse scaffold definition").
-			WithDetails("path", scaffoldPath)
+		return nil, fmt.Errorf("failed to parse scaffold definition (path=%v): %w", scaffoldPath, err)
 	}
 
 	return &def, nil
@@ -255,19 +251,17 @@ func LoadScaffoldDefinition(ctx context.Context, scaffoldDir string) (*ScaffoldD
 // LoadScaffoldDefinitionFromFS loads a scaffold definition from an embedded filesystem.
 func LoadScaffoldDefinitionFromFS(ctx context.Context, fsys fs.FS, scaffoldPath string) (*ScaffoldDefinition, error) {
 	if err := ctx.Err(); err != nil {
-		return nil, gerror.Wrap(err, gerror.ErrCodeCancelled, "context cancelled")
+		return nil, fmt.Errorf("context cancelled: %w", err)
 	}
 
 	data, err := fs.ReadFile(fsys, scaffoldPath)
 	if err != nil {
-		return nil, gerror.Wrap(err, gerror.ErrCodeIO, "failed to read scaffold definition").
-			WithDetails("path", scaffoldPath)
+		return nil, fmt.Errorf("failed to read scaffold definition (path=%v): %w", scaffoldPath, err)
 	}
 
 	var def ScaffoldDefinition
 	if err := yaml.Unmarshal(data, &def); err != nil {
-		return nil, gerror.Wrap(err, gerror.ErrCodeParsing, "failed to parse scaffold definition").
-			WithDetails("path", scaffoldPath)
+		return nil, fmt.Errorf("failed to parse scaffold definition (path=%v): %w", scaffoldPath, err)
 	}
 
 	return &def, nil
@@ -276,11 +270,10 @@ func LoadScaffoldDefinitionFromFS(ctx context.Context, fsys fs.FS, scaffoldPath 
 // ValidateScaffoldEntry validates a scaffold entry has required fields.
 func ValidateScaffoldEntry(entry ScaffoldEntry) error {
 	if entry.Name == "" {
-		return gerror.New(gerror.ErrCodeValidation, "scaffold entry missing required field: name", nil)
+		return fmt.Errorf("scaffold entry missing required field: name")
 	}
 	if entry.Path == "" && !entry.Builtin {
-		return gerror.New(gerror.ErrCodeValidation, "scaffold entry missing required field: path", nil).
-			WithDetails("name", entry.Name)
+		return fmt.Errorf("scaffold entry missing required field (path, name=%v)", entry.Name)
 	}
 	return nil
 }
@@ -288,11 +281,10 @@ func ValidateScaffoldEntry(entry ScaffoldEntry) error {
 // ValidateScaffoldDefinition validates a scaffold definition has required fields.
 func ValidateScaffoldDefinition(def *ScaffoldDefinition) error {
 	if def.Name == "" {
-		return gerror.New(gerror.ErrCodeValidation, "scaffold definition missing required field: name", nil)
+		return fmt.Errorf("scaffold definition missing required field: name")
 	}
 	if len(def.Tree) == 0 && len(def.Files) == 0 {
-		return gerror.New(gerror.ErrCodeValidation, "scaffold definition must have tree or files", nil).
-			WithDetails("name", def.Name)
+		return fmt.Errorf("scaffold definition must have tree or files: name=%v", def.Name)
 	}
 	return nil
 }

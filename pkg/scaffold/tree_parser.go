@@ -5,7 +5,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/guild-framework/guild-core/pkg/gerror"
 	"gopkg.in/yaml.v3"
 )
 
@@ -34,7 +33,7 @@ func NewTreeParser() *TreeParser {
 func (tp *TreeParser) ParseTreeFormat(data []byte) (*Recipe, error) {
 	var rawData map[string]interface{}
 	if err := yaml.Unmarshal(data, &rawData); err != nil {
-		return nil, gerror.Wrap(err, ErrCodeYAMLParse, "failed to parse tree YAML")
+		return nil, ErrYAMLParse("", err)
 	}
 
 	recipe := &Recipe{
@@ -71,8 +70,7 @@ func (tp *TreeParser) ParseTreeFormat(data []byte) (*Recipe, error) {
 		rootPath := strings.TrimSuffix(rootName, "/")
 
 		if err := tp.processNode(rootPath, rootContent, recipe); err != nil {
-			return nil, gerror.Wrap(err, ErrCodeValidation, "failed to process tree structure").
-				WithDetails("path", rootPath)
+			return nil, fmt.Errorf("failed to process tree structure (path=%v): %w", rootPath, err)
 		}
 	}
 

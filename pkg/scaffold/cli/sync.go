@@ -16,7 +16,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/guild-framework/guild-core/pkg/gerror"
 	"github.com/lancekrogers/guild-scaffold/pkg/scaffold/config"
 	"gopkg.in/yaml.v3"
 )
@@ -45,13 +44,13 @@ type SyncOptions struct {
 // ExecuteSync executes the sync command.
 func ExecuteSync(ctx context.Context, options *SyncOptions) error {
 	if err := ctx.Err(); err != nil {
-		return gerror.Wrap(err, gerror.ErrCodeCancelled, "context cancelled")
+		return fmt.Errorf("context cancelled: %w", err)
 	}
 
 	// Create path resolver
 	paths, err := config.NewPathResolver()
 	if err != nil {
-		return gerror.Wrap(err, gerror.ErrCodeInternal, "failed to create path resolver")
+		return fmt.Errorf("failed to create path resolver: %w", err)
 	}
 
 	// Build sync config
@@ -74,7 +73,7 @@ func ExecuteSync(ctx context.Context, options *SyncOptions) error {
 
 	// Ensure config directories exist
 	if err := paths.EnsureGlobalDirs(ctx); err != nil {
-		return gerror.Wrap(err, gerror.ErrCodeIO, "failed to create config directories")
+		return fmt.Errorf("failed to create config directories: %w", err)
 	}
 
 	// Execute sync
@@ -182,9 +181,7 @@ func executeSyncTemplate(ctx context.Context, paths *config.PathResolver, cfg *c
 	}
 
 	if target == nil {
-		return gerror.New(gerror.ErrCodeNotFound, "template not found in remote repository", nil).
-			WithDetails("name", name).
-			WithDetails("repo", cfg.EffectiveSyncRepo())
+		return fmt.Errorf("template not found in remote repository: name=%s, repo=%s", name, cfg.EffectiveSyncRepo())
 	}
 
 	// Load local registry
@@ -304,27 +301,23 @@ func fetchRemoteTemplates(ctx context.Context, cfg *config.SyncConfig) ([]config
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
-		return nil, gerror.Wrap(err, gerror.ErrCodeInternal, "failed to create request")
+		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 	req.Header.Set("Accept", "application/vnd.github.v3+json")
 	req.Header.Set("User-Agent", "guild-scaffold")
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return nil, gerror.Wrap(err, gerror.ErrCodeConnection, "failed to fetch remote templates")
+		return nil, fmt.Errorf("failed to fetch remote templates: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode == 404 {
-		return nil, gerror.New(gerror.ErrCodeNotFound, "library path not found", nil).
-			WithDetails("repo", repo).
-			WithDetails("path", libraryPath).
-			WithDetails("branch", branch)
+		return nil, fmt.Errorf("library path not found: repo=%s, path=%s, branch=%s", repo, libraryPath, branch)
 	}
 
 	if resp.StatusCode != 200 {
-		return nil, gerror.New(gerror.ErrCodeExternal, "unexpected response from GitHub", nil).
-			WithDetails("status", resp.StatusCode)
+		return nil, fmt.Errorf("unexpected response from GitHub: status=%d", resp.StatusCode)
 	}
 
 	// Parse response
@@ -334,7 +327,7 @@ func fetchRemoteTemplates(ctx context.Context, cfg *config.SyncConfig) ([]config
 		Path string `json:"path"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&contents); err != nil {
-		return nil, gerror.Wrap(err, gerror.ErrCodeParsing, "failed to parse GitHub response")
+		return nil, fmt.Errorf("failed to parse GitHub response: %w", err)
 	}
 
 	// Filter to directories only (templates are directories)
@@ -405,25 +398,24 @@ func downloadTemplate(ctx context.Context, cfg *config.SyncConfig, template *con
 
 	req, err := http.NewRequestWithContext(ctx, "GET", tarURL, nil)
 	if err != nil {
-		return gerror.Wrap(err, gerror.ErrCodeInternal, "failed to create request")
+		return fmt.Errorf("failed to create request: %w", err)
 	}
 	req.Header.Set("User-Agent", "guild-scaffold")
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return gerror.Wrap(err, gerror.ErrCodeConnection, "failed to download template")
+		return fmt.Errorf("failed to download template: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
-		return gerror.New(gerror.ErrCodeExternal, "failed to download tarball", nil).
-			WithDetails("status", resp.StatusCode)
+		return fmt.Errorf("failed to download tarball: status=%d", resp.StatusCode)
 	}
 
 	// Extract the specific template directory
 	gzr, err := gzip.NewReader(resp.Body)
 	if err != nil {
-		return gerror.Wrap(err, gerror.ErrCodeIO, "failed to decompress tarball")
+		return fmt.Errorf("failed to decompress tarball: %w", err)
 	}
 	defer gzr.Close()
 
@@ -434,7 +426,7 @@ func downloadTemplate(ctx context.Context, cfg *config.SyncConfig, template *con
 
 	// Create template directory
 	if err := os.MkdirAll(templateDest, 0755); err != nil {
-		return gerror.Wrap(err, gerror.ErrCodeIO, "failed to create template directory")
+		return fmt.Errorf("failed to create template directory: %w", err)
 	}
 
 	// The tarball has a root directory like "owner-repo-hash/"
@@ -447,7 +439,7 @@ func downloadTemplate(ctx context.Context, cfg *config.SyncConfig, template *con
 			break
 		}
 		if err != nil {
-			return gerror.Wrap(err, gerror.ErrCodeIO, "failed to read tarball")
+			return fmt.Errorf("failed to read tarball: %w", err)
 		}
 
 		// Skip the root directory prefix
@@ -473,22 +465,22 @@ func downloadTemplate(ctx context.Context, cfg *config.SyncConfig, template *con
 		switch header.Typeflag {
 		case tar.TypeDir:
 			if err := os.MkdirAll(destPath, 0755); err != nil {
-				return gerror.Wrap(err, gerror.ErrCodeIO, "failed to create directory")
+				return fmt.Errorf("failed to create directory: %w", err)
 			}
 		case tar.TypeReg:
 			// Ensure parent directory exists
 			if err := os.MkdirAll(filepath.Dir(destPath), 0755); err != nil {
-				return gerror.Wrap(err, gerror.ErrCodeIO, "failed to create parent directory")
+				return fmt.Errorf("failed to create parent directory: %w", err)
 			}
 
 			f, err := os.Create(destPath)
 			if err != nil {
-				return gerror.Wrap(err, gerror.ErrCodeIO, "failed to create file")
+				return fmt.Errorf("failed to create file: %w", err)
 			}
 
 			if _, err := io.Copy(f, tr); err != nil {
 				f.Close()
-				return gerror.Wrap(err, gerror.ErrCodeIO, "failed to write file")
+				return fmt.Errorf("failed to write file: %w", err)
 			}
 			f.Close()
 
@@ -525,16 +517,16 @@ func saveLocalRegistry(paths *config.PathResolver, registry *config.RegistryFile
 
 	// Ensure directory exists
 	if err := os.MkdirAll(filepath.Dir(registryPath), 0755); err != nil {
-		return gerror.Wrap(err, gerror.ErrCodeIO, "failed to create registry directory")
+		return fmt.Errorf("failed to create registry directory: %w", err)
 	}
 
 	data, err := yaml.Marshal(registry)
 	if err != nil {
-		return gerror.Wrap(err, gerror.ErrCodeInternal, "failed to marshal registry")
+		return fmt.Errorf("failed to marshal registry: %w", err)
 	}
 
 	if err := os.WriteFile(registryPath, data, 0644); err != nil {
-		return gerror.Wrap(err, gerror.ErrCodeIO, "failed to write registry file")
+		return fmt.Errorf("failed to write registry file: %w", err)
 	}
 
 	return nil

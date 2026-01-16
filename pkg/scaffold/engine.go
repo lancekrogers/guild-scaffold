@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"io/fs"
 	"time"
-
-	"github.com/guild-framework/guild-core/pkg/gerror"
 )
 
 // Engine provides the main scaffold operations interface
@@ -38,7 +36,7 @@ type ScaffoldEngine struct {
 func NewEngine(templateFS fs.FS, fileSystem FileSystem) (Engine, error) {
 	parser, err := NewParser(DefaultParseOptions)
 	if err != nil {
-		return nil, gerror.Wrap(err, gerror.ErrCodeInternal, "failed to create parser")
+		return nil, fmt.Errorf("failed to create parser: %w", err)
 	}
 
 	renderer := NewRenderer(templateFS, fileSystem)
@@ -72,8 +70,7 @@ func (se *ScaffoldEngine) RenderFS(ctx context.Context, recipe *Recipe, options 
 				msg += fmt.Sprintf(" (and %d more errors)", len(validationErrors)-1)
 			}
 		}
-		return nil, gerror.New(ErrCodeValidation, msg, nil).
-			WithDetails("errors", validationErrors)
+		return nil, fmt.Errorf("%s: errors=%v", msg, validationErrors)
 	}
 
 	// Ensure destination directory exists (skip in dry run mode)
@@ -81,8 +78,7 @@ func (se *ScaffoldEngine) RenderFS(ctx context.Context, recipe *Recipe, options 
 	// we should create the root directory (".")
 	if !options.Dry {
 		if err := se.fileSystem.MkdirAll(".", 0755); err != nil {
-			return nil, gerror.Wrap(err, gerror.ErrCodeIO, "failed to create destination directory").
-				WithDetails("dest", options.Dest)
+			return nil, fmt.Errorf("failed to create destination directory (dest=%v): %w", options.Dest, err)
 		}
 	}
 
@@ -124,19 +120,19 @@ func ScaffoldFromFS(ctx context.Context, templateFS fs.FS, scaffoldPath string, 
 	// Create file system
 	fileSystem, err := NewOSFileSystem(options.Dest)
 	if err != nil {
-		return nil, gerror.Wrap(err, gerror.ErrCodeInternal, "failed to create filesystem")
+		return nil, fmt.Errorf("failed to create filesystem: %w", err)
 	}
 
 	// Create engine
 	engine, err := NewEngine(templateFS, fileSystem)
 	if err != nil {
-		return nil, gerror.Wrap(err, gerror.ErrCodeInternal, "failed to create scaffold engine")
+		return nil, fmt.Errorf("failed to create scaffold engine: %w", err)
 	}
 
 	// Load recipe
 	recipe, err := engine.LoadRecipeFS(ctx, templateFS, scaffoldPath)
 	if err != nil {
-		return nil, gerror.Wrap(err, gerror.ErrCodeParsing, "failed to load recipe")
+		return nil, fmt.Errorf("failed to load recipe: %w", err)
 	}
 
 	// Set templates filesystem in options
@@ -175,13 +171,13 @@ func ValidateFromFS(ctx context.Context, templateFS fs.FS, scaffoldPath string) 
 	// Create engine
 	engine, err := NewEngine(templateFS, memFS)
 	if err != nil {
-		return nil, gerror.Wrap(err, gerror.ErrCodeInternal, "failed to create scaffold engine")
+		return nil, fmt.Errorf("failed to create scaffold engine: %w", err)
 	}
 
 	// Load recipe
 	recipe, err := engine.LoadRecipeFS(ctx, templateFS, scaffoldPath)
 	if err != nil {
-		return nil, gerror.Wrap(err, gerror.ErrCodeParsing, "failed to load recipe")
+		return nil, fmt.Errorf("failed to load recipe: %w", err)
 	}
 
 	// Validate
@@ -209,13 +205,13 @@ func GetScaffoldInfo(ctx context.Context, templateFS fs.FS, scaffoldPath string)
 	// Create engine
 	engine, err := NewEngine(templateFS, memFS)
 	if err != nil {
-		return nil, gerror.Wrap(err, gerror.ErrCodeInternal, "failed to create scaffold engine")
+		return nil, fmt.Errorf("failed to create scaffold engine: %w", err)
 	}
 
 	// Load recipe
 	recipe, err := engine.LoadRecipeFS(ctx, templateFS, scaffoldPath)
 	if err != nil {
-		return nil, gerror.Wrap(err, gerror.ErrCodeParsing, "failed to load recipe")
+		return nil, fmt.Errorf("failed to load recipe: %w", err)
 	}
 
 	loadTime := time.Since(start)

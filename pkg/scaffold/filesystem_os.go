@@ -1,12 +1,11 @@
 package scaffold
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
-
-	"github.com/guild-framework/guild-core/pkg/gerror"
 )
 
 // OSFileSystem implements FileSystem using the operating system
@@ -22,8 +21,7 @@ func NewOSFileSystem(basePath string) (*OSFileSystem, error) {
 		// Ensure base path exists and is absolute
 		absPath, err := filepath.Abs(basePath)
 		if err != nil {
-			return nil, gerror.Wrap(err, gerror.ErrCodeInternal, "failed to get absolute path").
-				WithDetails("basePath", basePath)
+			return nil, fmt.Errorf("failed to get absolute path (basePath=%s): %w", basePath, err)
 		}
 		basePath = absPath
 	}
@@ -65,9 +63,7 @@ func (osfs *OSFileSystem) WriteFile(path string, data []byte, perm os.FileMode) 
 	dir := filepath.Dir(path)
 	if dir != "." && dir != "" {
 		if err := osfs.MkdirAll(dir, 0755); err != nil {
-			return gerror.Wrap(err, gerror.ErrCodeIO, "failed to create directory").
-				WithDetails("dir", dir).
-				WithDetails("file", path)
+			return fmt.Errorf("failed to create directory (dir=%s, file=%s): %w", dir, path, err)
 		}
 	}
 
@@ -81,8 +77,7 @@ func (osfs *OSFileSystem) writeFileAtomic(path string, data []byte, perm os.File
 	dir := filepath.Dir(path)
 	tmpFile, err := os.CreateTemp(dir, ".tmp-scaffold-*")
 	if err != nil {
-		return gerror.Wrap(err, gerror.ErrCodeIO, "failed to create temporary file").
-			WithDetails("directory", dir)
+		return fmt.Errorf("failed to create temporary file (directory=%s): %w", dir, err)
 	}
 
 	tmpPath := tmpFile.Name()
@@ -96,30 +91,25 @@ func (osfs *OSFileSystem) writeFileAtomic(path string, data []byte, perm os.File
 	// Write data to temporary file
 	if _, err := tmpFile.Write(data); err != nil {
 		cleanup()
-		return gerror.Wrap(err, gerror.ErrCodeIO, "failed to write to temporary file").
-			WithDetails("tempFile", tmpPath)
+		return fmt.Errorf("failed to write to temporary file (tempFile=%s): %w", tmpPath, err)
 	}
 
 	// Sync to disk
 	if err := tmpFile.Sync(); err != nil {
 		cleanup()
-		return gerror.Wrap(err, gerror.ErrCodeIO, "failed to sync temporary file").
-			WithDetails("tempFile", tmpPath)
+		return fmt.Errorf("failed to sync temporary file (tempFile=%s): %w", tmpPath, err)
 	}
 
 	// Close temporary file
 	if err := tmpFile.Close(); err != nil {
 		os.Remove(tmpPath)
-		return gerror.Wrap(err, gerror.ErrCodeIO, "failed to close temporary file").
-			WithDetails("tempFile", tmpPath)
+		return fmt.Errorf("failed to close temporary file (tempFile=%s): %w", tmpPath, err)
 	}
 
 	// Set permissions
 	if err := os.Chmod(tmpPath, perm); err != nil {
 		os.Remove(tmpPath)
-		return gerror.Wrap(err, gerror.ErrCodeIO, "failed to set file permissions").
-			WithDetails("tempFile", tmpPath).
-			WithDetails("permissions", perm)
+		return fmt.Errorf("failed to set file permissions (tempFile=%s, permissions=%v): %w", tmpPath, perm, err)
 	}
 
 	// Atomic rename
@@ -140,8 +130,7 @@ func (osfs *OSFileSystem) Stat(path string) (os.FileInfo, error) {
 
 	info, err := os.Stat(safePath)
 	if err != nil {
-		return nil, gerror.Wrap(err, gerror.ErrCodeIO, "failed to stat file").
-			WithDetails("path", path)
+		return nil, fmt.Errorf("failed to stat file (path=%s): %w", path, err)
 	}
 
 	return info, nil
@@ -152,9 +141,7 @@ func (osfs *OSFileSystem) MkdirAll(path string, perm os.FileMode) error {
 	// Special case: if path is "." or empty and we have a basePath, create the basePath
 	if (path == "." || path == "") && osfs.basePath != "" {
 		if err := os.MkdirAll(osfs.basePath, perm); err != nil {
-			return gerror.Wrap(err, gerror.ErrCodeIO, "failed to create base directory").
-				WithDetails("path", osfs.basePath).
-				WithDetails("permissions", perm)
+			return fmt.Errorf("failed to create base directory (path=%s, permissions=%v): %w", osfs.basePath, perm, err)
 		}
 		return nil
 	}
@@ -162,15 +149,11 @@ func (osfs *OSFileSystem) MkdirAll(path string, perm os.FileMode) error {
 	safePath, err := osfs.safePath(path)
 	if err != nil {
 		// Add more details to understand what's failing
-		return gerror.Wrap(err, gerror.ErrCodeIO, "failed to validate path for MkdirAll").
-			WithDetails("input_path", path).
-			WithDetails("base_path", osfs.basePath)
+		return fmt.Errorf("failed to validate path for MkdirAll (input_path=%s, base_path=%s): %w", path, osfs.basePath, err)
 	}
 
 	if err := os.MkdirAll(safePath, perm); err != nil {
-		return gerror.Wrap(err, gerror.ErrCodeIO, "failed to create directories").
-			WithDetails("path", path).
-			WithDetails("permissions", perm)
+		return fmt.Errorf("failed to create directories (path=%s, permissions=%v): %w", path, perm, err)
 	}
 
 	return nil
@@ -210,8 +193,7 @@ func (osfs *OSFileSystem) Remove(path string) error {
 	}
 
 	if err := os.Remove(safePath); err != nil {
-		return gerror.Wrap(err, gerror.ErrCodeIO, "failed to remove file").
-			WithDetails("path", path)
+		return fmt.Errorf("failed to remove file (path=%s): %w", path, err)
 	}
 
 	return nil
@@ -225,8 +207,7 @@ func (osfs *OSFileSystem) RemoveAll(path string) error {
 	}
 
 	if err := os.RemoveAll(safePath); err != nil {
-		return gerror.Wrap(err, gerror.ErrCodeIO, "failed to remove directory").
-			WithDetails("path", path)
+		return fmt.Errorf("failed to remove directory (path=%s): %w", path, err)
 	}
 
 	return nil
@@ -256,8 +237,7 @@ func (osfs *OSFileSystem) safePath(path string) (string, error) {
 		// For relative paths, resolve to absolute
 		absPath, err := filepath.Abs(cleanPath)
 		if err != nil {
-			return "", gerror.Wrap(err, gerror.ErrCodeInternal, "failed to resolve path").
-				WithDetails("path", path)
+			return "", fmt.Errorf("failed to resolve path (path=%s): %w", path, err)
 		}
 		return absPath, nil
 	}
@@ -273,8 +253,7 @@ func (osfs *OSFileSystem) safePath(path string) (string, error) {
 	// Get the real absolute path (handles any symlinks)
 	absFullPath, err := filepath.Abs(fullPath)
 	if err != nil {
-		return "", gerror.Wrap(err, gerror.ErrCodeInternal, "failed to resolve full path").
-			WithDetails("path", path)
+		return "", fmt.Errorf("failed to resolve full path (path=%s): %w", path, err)
 	}
 
 	// Check if the resolved path is within the base path
@@ -288,11 +267,7 @@ func (osfs *OSFileSystem) safePath(path string) (string, error) {
 
 	// Path is valid if it's the exact base or starts with base+separator
 	if absFullPath != basePath && !strings.HasPrefix(absFullPath, baseWithSep) {
-		return "", gerror.New(gerror.ErrCodeInvalidInput, "path escapes base directory", nil).
-			WithDetails("path", path).
-			WithDetails("cleanPath", cleanPath).
-			WithDetails("absFullPath", absFullPath).
-			WithDetails("basePath", basePath)
+		return "", fmt.Errorf("path escapes base directory: path=%s, cleanPath=%s, absFullPath=%s, basePath=%s", path, cleanPath, absFullPath, basePath)
 	}
 
 	return absFullPath, nil

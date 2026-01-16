@@ -10,7 +10,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/guild-framework/guild-core/pkg/gerror"
 	"github.com/lancekrogers/guild-scaffold/pkg/scaffold"
 	"gopkg.in/yaml.v3"
 )
@@ -64,12 +63,12 @@ func ListTemplates(ctx context.Context) error {
 // ListTemplatesWithOptions lists available templates with specified options
 func ListTemplatesWithOptions(ctx context.Context, options *ListOptions) error {
 	if err := options.Validate(); err != nil {
-		return gerror.Wrap(err, gerror.ErrCodeValidation, "invalid list options")
+		return fmt.Errorf("invalid list options: %w", err)
 	}
 
 	templates, err := getAvailableTemplates(ctx)
 	if err != nil {
-		return gerror.Wrap(err, gerror.ErrCodeInternal, "failed to load templates")
+		return fmt.Errorf("failed to load templates: %w", err)
 	}
 
 	switch options.Format {
@@ -80,14 +79,14 @@ func ListTemplatesWithOptions(ctx context.Context, options *ListOptions) error {
 	case "yaml":
 		return displayTemplatesYAML(templates)
 	default:
-		return gerror.New(gerror.ErrCodeInvalidInput, "unsupported format", nil).WithDetails("format", options.Format)
+		return fmt.Errorf("unsupported format: format=%v", options.Format)
 	}
 }
 
 // ValidateScaffold validates a scaffold configuration
 func ValidateScaffold(ctx context.Context, options *ValidateOptions) error {
 	if err := options.Validate(); err != nil {
-		return gerror.Wrap(err, gerror.ErrCodeValidation, "invalid validate options")
+		return fmt.Errorf("invalid validate options: %w", err)
 	}
 
 	var result ValidationResult
@@ -108,7 +107,7 @@ func ValidateScaffold(ctx context.Context, options *ValidateOptions) error {
 	case "yaml":
 		return displayValidationYAML(result)
 	default:
-		return gerror.New(gerror.ErrCodeInvalidInput, "unsupported format", nil).WithDetails("format", options.Format)
+		return fmt.Errorf("unsupported format: format=%v", options.Format)
 	}
 }
 

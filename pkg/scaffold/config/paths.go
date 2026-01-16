@@ -9,10 +9,9 @@ package config
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
-
-	"github.com/guild-framework/guild-core/pkg/gerror"
 )
 
 // Directory names and paths
@@ -50,12 +49,12 @@ type PathResolver struct {
 func NewPathResolver() (*PathResolver, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
-		return nil, gerror.Wrap(err, gerror.ErrCodeIO, "failed to get home directory")
+		return nil, fmt.Errorf("failed to get home directory: %w", err)
 	}
 
 	wd, err := os.Getwd()
 	if err != nil {
-		return nil, gerror.Wrap(err, gerror.ErrCodeIO, "failed to get working directory")
+		return nil, fmt.Errorf("failed to get working directory: %w", err)
 	}
 
 	return &PathResolver{
@@ -125,15 +124,15 @@ func (p *PathResolver) WorkspaceRegistryFile() string {
 //  1. Workspace templates (.campaign/templates/<name>/)
 //  2. Global templates (~/.config/guild/templates/<name>/)
 //
-// Returns the path and source ("workspace" or "global").
+// Returns the path and source ("workspace" or "global")
 // Returns ErrNotFound if template doesn't exist in either location.
 func (p *PathResolver) ResolveTemplatePath(ctx context.Context, name string) (path string, source string, err error) {
 	if err := ctx.Err(); err != nil {
-		return "", "", gerror.Wrap(err, gerror.ErrCodeCancelled, "context cancelled")
+		return "", "", fmt.Errorf("context cancelled: %w", err)
 	}
 
 	if name == "" {
-		return "", "", gerror.New(gerror.ErrCodeValidation, "template name cannot be empty", nil)
+		return "", "", fmt.Errorf("template name cannot be empty")
 	}
 
 	// Check workspace first (highest precedence)
@@ -148,9 +147,7 @@ func (p *PathResolver) ResolveTemplatePath(ctx context.Context, name string) (pa
 		return globalPath, "global", nil
 	}
 
-	return "", "", gerror.New(gerror.ErrCodeNotFound, "template not found", nil).
-		WithDetails("name", name).
-		WithDetails("searched", []string{workspacePath, globalPath})
+	return "", "", fmt.Errorf("template not found: name=%s, searched=%v", name, []string{workspacePath, globalPath})
 }
 
 // isValidTemplateDir checks if a path is a valid template directory.
@@ -170,7 +167,7 @@ func (p *PathResolver) isValidTemplateDir(path string) bool {
 // EnsureGlobalDirs creates the global configuration directories if they don't exist.
 func (p *PathResolver) EnsureGlobalDirs(ctx context.Context) error {
 	if err := ctx.Err(); err != nil {
-		return gerror.Wrap(err, gerror.ErrCodeCancelled, "context cancelled")
+		return fmt.Errorf("context cancelled: %w", err)
 	}
 
 	dirs := []string{
@@ -180,8 +177,7 @@ func (p *PathResolver) EnsureGlobalDirs(ctx context.Context) error {
 
 	for _, dir := range dirs {
 		if err := os.MkdirAll(dir, 0755); err != nil {
-			return gerror.Wrap(err, gerror.ErrCodeIO, "failed to create directory").
-				WithDetails("path", dir)
+			return fmt.Errorf("failed to create directory (path=%v): %w", dir, err)
 		}
 	}
 
@@ -192,7 +188,7 @@ func (p *PathResolver) EnsureGlobalDirs(ctx context.Context) error {
 // Workspace templates take precedence over global templates with the same name.
 func (p *PathResolver) ListTemplates(ctx context.Context) ([]TemplateInfo, error) {
 	if err := ctx.Err(); err != nil {
-		return nil, gerror.Wrap(err, gerror.ErrCodeCancelled, "context cancelled")
+		return nil, fmt.Errorf("context cancelled: %w", err)
 	}
 
 	templates := make(map[string]TemplateInfo)

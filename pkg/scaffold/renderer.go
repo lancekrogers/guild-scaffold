@@ -13,8 +13,6 @@ import (
 	"sync"
 	"text/template"
 	"time"
-
-	"github.com/guild-framework/guild-core/pkg/gerror"
 )
 
 // Renderer handles template rendering operations
@@ -58,7 +56,7 @@ func (tr *templateRenderer) SetTemplateFS(fsys fs.FS) {
 func (tr *templateRenderer) RenderTemplate(ctx context.Context, templateName string, context RenderContext) ([]byte, error) {
 	// Check context cancellation
 	if err := ctx.Err(); err != nil {
-		return nil, gerror.Wrap(err, gerror.ErrCodeCancelled, "context cancelled before rendering")
+		return nil, fmt.Errorf("context cancelled before rendering: %w", err)
 	}
 
 	// Get or parse template
@@ -98,7 +96,7 @@ func (tr *templateRenderer) RenderRecipe(ctx context.Context, recipe *Recipe, op
 		// Check context cancellation
 		select {
 		case <-ctx.Done():
-			return stats, gerror.Wrap(ctx.Err(), gerror.ErrCodeCancelled, "rendering cancelled")
+			return stats, fmt.Errorf("rendering cancelled: %w", ctx.Err())
 		default:
 		}
 
@@ -134,10 +132,7 @@ func (tr *templateRenderer) RenderRecipe(ctx context.Context, recipe *Recipe, op
 					continue
 				}
 
-				return stats, gerror.Wrap(err, gerror.ErrCodeInternal, "failed to render file").
-					WithDetails("fileIndex", i).
-					WithDetails("filePath", file.Path).
-					WithDetails("template", file.Template)
+				return stats, fmt.Errorf("failed to render file (fileIndex=%v): %w", i, err)
 			}
 		}
 
@@ -147,16 +142,14 @@ func (tr *templateRenderer) RenderRecipe(ctx context.Context, recipe *Recipe, op
 			if options.Overwrite && tr.fileExists(file.Path) {
 				if err := tr.fileSystem.Remove(file.Path); err != nil {
 					stats.FilesFailed++
-					return stats, gerror.Wrap(err, gerror.ErrCodeIO, "failed to remove existing file for overwrite").
-						WithDetails("filePath", file.Path)
+					return stats, fmt.Errorf("failed to remove existing file for overwrite (filePath=%v): %w", file.Path, err)
 				}
 			}
 
 			// Use relative path since fileSystem has basePath configured
 			if err := tr.writeFile(ctx, file.Path, content); err != nil {
 				stats.FilesFailed++
-				return stats, gerror.Wrap(err, gerror.ErrCodeIO, "failed to write file").
-					WithDetails("filePath", file.Path)
+				return stats, fmt.Errorf("failed to write file (filePath=%v): %w", file.Path, err)
 			}
 		}
 
@@ -185,8 +178,7 @@ func (tr *templateRenderer) getTemplate(ctx context.Context, templateName, templ
 	tmpl := template.New(templateName).Funcs(tr.funcMap)
 	parsedTemplate, err := tmpl.Parse(string(content))
 	if err != nil {
-		return nil, gerror.Wrap(err, gerror.ErrCodeParsing, "failed to parse template").
-			WithDetails("template", templateName)
+		return nil, fmt.Errorf("failed to parse template (template=%v): %w", templateName, err)
 	}
 
 	// Cache parsed template
@@ -242,14 +234,13 @@ func (tr *templateRenderer) fileExists(path string) bool {
 func (tr *templateRenderer) writeFile(ctx context.Context, path string, content []byte) error {
 	// Check context cancellation
 	if err := ctx.Err(); err != nil {
-		return gerror.Wrap(err, gerror.ErrCodeCancelled, "context cancelled before writing file")
+		return fmt.Errorf("context cancelled before writing file: %w", err)
 	}
 
 	// Create directory if needed
 	dir := filepath.Dir(path)
 	if err := tr.fileSystem.MkdirAll(dir, 0755); err != nil {
-		return gerror.Wrap(err, gerror.ErrCodeIO, "failed to create directory").
-			WithDetails("directory", dir)
+		return fmt.Errorf("failed to create directory (directory=%v): %w", dir, err)
 	}
 
 	// Write file

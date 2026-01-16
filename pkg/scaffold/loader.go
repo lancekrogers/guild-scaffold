@@ -5,11 +5,11 @@ package scaffold
 
 import (
 	"context"
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
 
-	"github.com/guild-framework/guild-core/pkg/gerror"
 	"github.com/lancekrogers/guild-scaffold/pkg/scaffold/config"
 )
 
@@ -33,17 +33,17 @@ type RegistryLoader struct {
 func NewRegistryLoader() (*RegistryLoader, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
-		return nil, gerror.Wrap(err, gerror.ErrCodeIO, "failed to get home directory")
+		return nil, fmt.Errorf("failed to get home directory: %w", err)
 	}
 
 	wd, err := os.Getwd()
 	if err != nil {
-		return nil, gerror.Wrap(err, gerror.ErrCodeIO, "failed to get working directory")
+		return nil, fmt.Errorf("failed to get working directory: %w", err)
 	}
 
 	paths, err := config.NewPathResolver()
 	if err != nil {
-		return nil, gerror.Wrap(err, gerror.ErrCodeInternal, "failed to create path resolver")
+		return nil, fmt.Errorf("failed to create path resolver: %w", err)
 	}
 
 	return &RegistryLoader{
@@ -79,7 +79,7 @@ func (l *RegistryLoader) WithBuiltins(include bool) *RegistryLoader {
 // 3. Legacy registries (for backwards compatibility)
 func (l *RegistryLoader) Load(ctx context.Context) (*Registry, error) {
 	if err := ctx.Err(); err != nil {
-		return nil, gerror.Wrap(err, gerror.ErrCodeCancelled, "context cancelled")
+		return nil, fmt.Errorf("context cancelled: %w", err)
 	}
 
 	registry := NewRegistry()
@@ -201,7 +201,7 @@ func (l *RegistryLoader) loadBuiltins() *Registry {
 }
 
 // GetGlobalTemplatesFS returns the global templates directory as an fs.FS.
-// Returns nil if the directory doesn't exist (templates not synced).
+// Returns nil if the directory doesn't exist (templates not synced)
 func GetGlobalTemplatesFS() fs.FS {
 	paths, err := config.NewPathResolver()
 	if err != nil {
@@ -223,10 +223,10 @@ func GetBuiltinFS() fs.FS {
 }
 
 // ResolveScaffold resolves a scaffold entry to its definition and filesystem.
-// All scaffolds are now filesystem-based (loaded from config directory).
+// All scaffolds are now filesystem-based (loaded from config directory)
 func ResolveScaffold(ctx context.Context, entry ScaffoldEntry) (*ScaffoldDefinition, fs.FS, error) {
 	if err := ctx.Err(); err != nil {
-		return nil, nil, gerror.Wrap(err, gerror.ErrCodeCancelled, "context cancelled")
+		return nil, nil, fmt.Errorf("context cancelled: %w", err)
 	}
 
 	// All scaffolds are now external (filesystem-based)
@@ -238,12 +238,10 @@ func resolveExternalScaffold(ctx context.Context, entry ScaffoldEntry) (*Scaffol
 	// Verify path exists
 	info, err := os.Stat(entry.Path)
 	if err != nil {
-		return nil, nil, gerror.Wrap(err, gerror.ErrCodeNotFound, "scaffold path not found").
-			WithDetails("path", entry.Path)
+		return nil, nil, fmt.Errorf("scaffold path not found (path=%v): %w", entry.Path, err)
 	}
 	if !info.IsDir() {
-		return nil, nil, gerror.New(gerror.ErrCodeValidation, "scaffold path is not a directory", nil).
-			WithDetails("path", entry.Path)
+		return nil, nil, fmt.Errorf("scaffold path is not a directory: path=%v", entry.Path)
 	}
 
 	// Load definition
@@ -265,9 +263,7 @@ func (l *RegistryLoader) FindScaffold(ctx context.Context, name string) (Scaffol
 
 	entry, ok := registry.Get(name)
 	if !ok {
-		return ScaffoldEntry{}, gerror.New(gerror.ErrCodeNotFound, "scaffold not found", nil).
-			WithDetails("name", name).
-			WithDetails("available", registryNames(registry))
+		return ScaffoldEntry{}, fmt.Errorf("scaffold not found: name=%v", name)
 	}
 
 	return entry, nil

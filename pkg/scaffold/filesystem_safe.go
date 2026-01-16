@@ -2,10 +2,9 @@ package scaffold
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
-
-	"github.com/guild-framework/guild-core/pkg/gerror"
 )
 
 // SafeFileWriter provides additional safety for file operations
@@ -28,7 +27,7 @@ func NewSafeFileWriter(fs FileSystem, dryRun bool, allowedPaths []string) *SafeF
 func (sfw *SafeFileWriter) WriteFileWithContext(ctx context.Context, path string, data []byte, perm os.FileMode) error {
 	// Check context cancellation
 	if err := ctx.Err(); err != nil {
-		return gerror.Wrap(err, gerror.ErrCodeCancelled, "context cancelled before writing file")
+		return fmt.Errorf("context cancelled before writing file: %w", err)
 	}
 
 	// Validate path is allowed

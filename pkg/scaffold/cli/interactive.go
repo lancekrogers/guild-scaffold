@@ -10,8 +10,6 @@ import (
 	"os"
 	"strconv"
 	"strings"
-
-	"github.com/guild-framework/guild-core/pkg/gerror"
 )
 
 // runInteractiveConfiguration runs interactive mode for template configuration
@@ -26,37 +24,37 @@ func runInteractiveConfiguration(ctx context.Context, options *InitOptions) erro
 	if options.TemplateName == "" {
 		templateName, err := promptTemplateSelection(reader)
 		if err != nil {
-			return gerror.Wrap(err, gerror.ErrCodeValidation, "failed to select template")
+			return fmt.Errorf("failed to select template: %w", err)
 		}
 		options.TemplateName = templateName
 	}
 
 	// Project basic information
 	if err := promptBasicInfo(reader, options); err != nil {
-		return gerror.Wrap(err, gerror.ErrCodeInternal, "failed to collect basic information")
+		return fmt.Errorf("failed to collect basic information: %w", err)
 	}
 
 	// Template-specific configuration
 	switch options.TemplateName {
 	case "campaign":
 		if err := promptCampaignConfig(reader, options); err != nil {
-			return gerror.Wrap(err, gerror.ErrCodeInternal, "failed to collect campaign configuration")
+			return fmt.Errorf("failed to collect campaign configuration: %w", err)
 		}
 
 	case "guild_core_extension":
 		if err := promptExtensionConfig(reader, options); err != nil {
-			return gerror.Wrap(err, gerror.ErrCodeInternal, "failed to collect extension configuration")
+			return fmt.Errorf("failed to collect extension configuration: %w", err)
 		}
 
 	case "single_agent":
 		if err := promptAgentConfig(reader, options); err != nil {
-			return gerror.Wrap(err, gerror.ErrCodeInternal, "failed to collect agent configuration")
+			return fmt.Errorf("failed to collect agent configuration: %w", err)
 		}
 	}
 
 	// Provider configuration
 	if err := promptProviderConfig(reader, options); err != nil {
-		return gerror.Wrap(err, gerror.ErrCodeInternal, "failed to collect provider configuration")
+		return fmt.Errorf("failed to collect provider configuration: %w", err)
 	}
 
 	fmt.Println("✅ Configuration complete!")

@@ -1,14 +1,13 @@
 package scaffold
 
 import (
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
 	"time"
-
-	"github.com/guild-framework/guild-core/pkg/gerror"
 )
 
 // MemoryFileSystem implements FileSystem in memory for testing
@@ -176,15 +175,13 @@ func (mfs *MemoryFileSystem) Remove(path string) error {
 		// Check if directory has contents
 		for filePath := range mfs.files {
 			if isWithinDir(filePath, cleanPath) {
-				return gerror.New(gerror.ErrCodeIO, "directory not empty", nil).
-					WithDetails("path", path)
+				return fmt.Errorf("directory not empty: path=%v", path)
 			}
 		}
 
 		for dirPath := range mfs.dirs {
 			if dirPath != cleanPath && isWithinDir(dirPath, cleanPath) {
-				return gerror.New(gerror.ErrCodeIO, "directory not empty", nil).
-					WithDetails("path", path)
+				return fmt.Errorf("directory not empty: path=%v", path)
 			}
 		}
 

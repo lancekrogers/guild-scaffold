@@ -12,7 +12,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/guild-framework/guild-core/pkg/gerror"
 	"gopkg.in/yaml.v3"
 )
 
@@ -104,10 +103,7 @@ func (p *yamlParser) readWithLimit(fsys fs.FS, path string) ([]byte, error) {
 	}
 
 	if info.Size() > p.options.MaxFileSize {
-		return nil, gerror.New(ErrCodeValidation, "file too large", nil).
-			WithDetails("size", info.Size()).
-			WithDetails("maxSize", p.options.MaxFileSize).
-			WithDetails("path", path)
+		return nil, fmt.Errorf("file too large: size=%v, maxSize=%v", info.Size(), p.options.MaxFileSize)
 	}
 
 	return fs.ReadFile(fsys, path)
@@ -143,8 +139,7 @@ func (p *yamlParser) parseWithTimeout(ctx context.Context, data []byte, filename
 						msg += fmt.Sprintf(" (and %d more errors)", len(validationErrors)-1)
 					}
 				}
-				return nil, gerror.New(ErrCodeValidation, msg, nil).
-					WithDetails("errors", validationErrors)
+				return nil, fmt.Errorf("%s: errors=%v", msg, validationErrors)
 			}
 		}
 
@@ -168,8 +163,7 @@ func (p *yamlParser) parseYAML(data []byte, filename string) (*Recipe, error) {
 		treeParser := NewTreeParser()
 		recipe, err := treeParser.ParseTreeFormat(data)
 		if err != nil {
-			return nil, gerror.Wrap(err, ErrCodeYAMLParse, "failed to parse tree format").
-				WithDetails("file", filename)
+			return nil, fmt.Errorf("failed to parse tree format (file=%v): %w", filename, err)
 		}
 		return recipe, nil
 	}
@@ -234,8 +228,7 @@ func (p *yamlParser) enhanceYAMLError(err error, data []byte, filename string) e
 		File:             filename,
 	}
 
-	return gerror.Wrap(enhancedErr, ErrCodeYAMLParse, "YAML parsing failed").
-		WithDetails("file", filename)
+	return fmt.Errorf("YAML parsing failed (file=%v): %w", filename, enhancedErr)
 }
 
 // addLineContext adds line numbers and context to error messages
@@ -322,8 +315,7 @@ func (p *yamlParser) validateRequiredFields(recipe *Recipe) error {
 	}
 
 	if len(errors) > 0 {
-		return gerror.New(ErrCodeValidation, "validation failed", nil).
-			WithDetails("errors", ValidationErrors(errors))
+		return fmt.Errorf("validation failed: errors=%v", ValidationErrors(errors))
 	}
 
 	return nil

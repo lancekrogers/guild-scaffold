@@ -10,20 +10,19 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/guild-framework/guild-core/pkg/gerror"
 	"github.com/lancekrogers/guild-scaffold/pkg/scaffold"
 )
 
 // ExecuteInit executes the scaffold initialization process
 func ExecuteInit(ctx context.Context, options *InitOptions) error {
 	if err := options.Validate(); err != nil {
-		return gerror.Wrap(err, gerror.ErrCodeValidation, "invalid options")
+		return fmt.Errorf("invalid options: %w", err)
 	}
 
 	// Interactive mode handling
 	if options.Interactive {
 		if err := runInteractiveConfiguration(ctx, options); err != nil {
-			return gerror.Wrap(err, gerror.ErrCodeInternal, "interactive configuration failed")
+			return fmt.Errorf("interactive configuration failed: %w", err)
 		}
 	}
 
@@ -35,40 +34,37 @@ func ExecuteInit(ctx context.Context, options *InitOptions) error {
 	// Create registry loader
 	loader, err := scaffold.NewRegistryLoader()
 	if err != nil {
-		return gerror.Wrap(err, gerror.ErrCodeInternal, "failed to create registry loader")
+		return fmt.Errorf("failed to create registry loader: %w", err)
 	}
 
 	// Find scaffold in registry
 	entry, err := loader.FindScaffold(ctx, options.TemplateName)
 	if err != nil {
-		return gerror.Wrap(err, gerror.ErrCodeNotFound, "template not found").
-			WithDetails("template", options.TemplateName).
-			WithDetails("suggestion", "run 'scaffold sync' to download templates, or 'scaffold list' to see available templates")
+		return fmt.Errorf("template not found (template=%s, suggestion: run 'scaffold sync' to download templates, or 'scaffold list' to see available templates): %w", options.TemplateName, err)
 	}
 
 	// Resolve scaffold to get definition and filesystem
 	def, scaffoldFS, err := scaffold.ResolveScaffold(ctx, entry)
 	if err != nil {
-		return gerror.Wrap(err, gerror.ErrCodeInternal, "failed to resolve scaffold").
-			WithDetails("template", options.TemplateName)
+		return fmt.Errorf("failed to resolve scaffold (template=%s): %w", options.TemplateName, err)
 	}
 
 	// Convert scaffold definition to recipe
 	recipe, err := definitionToRecipe(def)
 	if err != nil {
-		return gerror.Wrap(err, gerror.ErrCodeInternal, "failed to convert scaffold definition")
+		return fmt.Errorf("failed to convert scaffold definition: %w", err)
 	}
 
 	// Create output filesystem
 	outFS, err := scaffold.NewOSFileSystem(options.OutputDirectory)
 	if err != nil {
-		return gerror.Wrap(err, gerror.ErrCodeInternal, "failed to create output filesystem")
+		return fmt.Errorf("failed to create output filesystem: %w", err)
 	}
 
 	// Create scaffold engine with the scaffold's filesystem
 	engine, err := scaffold.NewEngine(scaffoldFS, outFS)
 	if err != nil {
-		return gerror.Wrap(err, gerror.ErrCodeInternal, "failed to create scaffold engine")
+		return fmt.Errorf("failed to create scaffold engine: %w", err)
 	}
 
 	// Create scaffold options
@@ -170,9 +166,7 @@ func treeToFiles(tree map[string]any, prefix string) ([]scaffold.FileEntry, erro
 			files = append(files, subFiles...)
 
 		default:
-			return nil, gerror.New(gerror.ErrCodeValidation, "unexpected tree value type", nil).
-				WithDetails("path", path).
-				WithDetails("type", fmt.Sprintf("%T", value))
+			return nil, fmt.Errorf("unexpected tree value type: path=%s, type=%T", path, value)
 		}
 	}
 
@@ -248,19 +242,17 @@ func checkOutputDirectory(outputDir string) error {
 		// Directory doesn't exist, that's fine
 		return nil
 	} else if err != nil {
-		return gerror.Wrap(err, gerror.ErrCodeIO, "failed to check output directory")
+		return fmt.Errorf("failed to check output directory: %w", err)
 	}
 
 	// Directory exists, check if it's empty
 	entries, err := os.ReadDir(outputDir)
 	if err != nil {
-		return gerror.Wrap(err, gerror.ErrCodeIO, "failed to read output directory")
+		return fmt.Errorf("failed to read output directory: %w", err)
 	}
 
 	if len(entries) > 0 {
-		return gerror.New(gerror.ErrCodeAlreadyExists, "output directory is not empty", nil).
-			WithDetails("directory", outputDir).
-			WithDetails("suggestion", "use --force to overwrite existing files")
+		return fmt.Errorf("output directory is not empty: directory=%s, suggestion: use --force to overwrite existing files", outputDir)
 	}
 
 	return nil

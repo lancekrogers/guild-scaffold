@@ -5,13 +5,13 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"path/filepath"
 	"strconv"
 	"strings"
 
 	"github.com/spf13/cobra"
 
-	"github.com/guild-framework/guild-core/pkg/gerror"
 	"github.com/lancekrogers/guild-scaffold/pkg/scaffold/cli"
 )
 
@@ -93,7 +93,7 @@ func runInit(cmd *cobra.Command, args []string) error {
 	// Create CLI options from flags
 	options, err := createCLIOptions(ctx, projectName)
 	if err != nil {
-		return gerror.Wrap(err, gerror.ErrCodeInternal, "failed to create CLI options")
+		return fmt.Errorf("failed to create CLI options: %w", err)
 	}
 
 	// Execute scaffolding through CLI package
@@ -105,14 +105,13 @@ func createCLIOptions(ctx context.Context, projectName string) (*cli.InitOptions
 	// Determine output directory
 	outputDir, err := filepath.Abs(initFlags.OutputDir)
 	if err != nil {
-		return nil, gerror.Wrap(err, gerror.ErrCodeInvalidInput, "invalid output directory").
-			WithDetails("path", initFlags.OutputDir)
+		return nil, fmt.Errorf("invalid output directory (path=%v): %w", initFlags.OutputDir, err)
 	}
 
 	// Parse template variables
 	variables, err := parseVariables(initFlags.Variables)
 	if err != nil {
-		return nil, gerror.Wrap(err, gerror.ErrCodeInvalidInput, "failed to parse variables")
+		return nil, fmt.Errorf("failed to parse variables: %w", err)
 	}
 
 	// Add project name to variables (only if not already provided via --var)
@@ -154,17 +153,14 @@ func parseVariables(varStrings []string) (map[string]interface{}, error) {
 	for _, varStr := range varStrings {
 		parts := strings.SplitN(varStr, "=", 2)
 		if len(parts) != 2 {
-			return nil, gerror.New(gerror.ErrCodeInvalidInput, "invalid variable format", nil).
-				WithDetails("variable", varStr).
-				WithDetails("expected_format", "key=value")
+			return nil, fmt.Errorf("invalid variable format: variable=%v", varStr)
 		}
 
 		key := strings.TrimSpace(parts[0])
 		value := strings.TrimSpace(parts[1])
 
 		if key == "" {
-			return nil, gerror.New(gerror.ErrCodeInvalidInput, "variable key cannot be empty", nil).
-				WithDetails("variable", varStr)
+			return nil, fmt.Errorf("variable key cannot be empty: variable=%v", varStr)
 		}
 
 		// Attempt to parse as different types

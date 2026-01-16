@@ -4,10 +4,10 @@
 package templates
 
 import (
+	"fmt"
 	"embed"
 	"io/fs"
 
-	"github.com/guild-framework/guild-core/pkg/gerror"
 )
 
 // EmbeddedTemplates contains the embedded template files
@@ -20,7 +20,7 @@ func GetEmbeddedTemplatesFS() (fs.FS, error) {
 	// Return the subdirectory that contains the actual templates
 	subFS, err := fs.Sub(EmbeddedTemplates, "templates")
 	if err != nil {
-		return nil, gerror.Wrap(err, gerror.ErrCodeInternal, "failed to get templates subdirectory")
+		return nil, fmt.Errorf("failed to get templates subdirectory: %w", err)
 	}
 	return subFS, nil
 }

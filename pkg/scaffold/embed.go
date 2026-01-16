@@ -10,7 +10,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/guild-framework/guild-core/pkg/gerror"
 	"gopkg.in/yaml.v3"
 )
 
@@ -120,14 +119,12 @@ func (tl *TemplateLibrary) GetSpecification(ctx context.Context) (*ScaffoldSpec,
 
 	data, err := fs.ReadFile(tl.fsys, "templates/scaffold.yaml")
 	if err != nil {
-		return nil, gerror.Wrap(err, gerror.ErrCodeIO, "failed to read scaffold specification").
-			WithDetails("file", "templates/scaffold.yaml")
+		return nil, fmt.Errorf("failed to read scaffold specification (file=templates/scaffold.yaml): %w", err)
 	}
 
 	var spec ScaffoldSpec
 	if err := yaml.Unmarshal(data, &spec); err != nil {
-		return nil, gerror.Wrap(err, gerror.ErrCodeParsing, "failed to parse scaffold specification").
-			WithDetails("file", "templates/scaffold.yaml")
+		return nil, fmt.Errorf("failed to parse scaffold specification (file=templates/scaffold.yaml): %w", err)
 	}
 
 	tl.specification = &spec
@@ -138,7 +135,7 @@ func (tl *TemplateLibrary) GetSpecification(ctx context.Context) (*ScaffoldSpec,
 func (tl *TemplateLibrary) GetTemplate(ctx context.Context, templateName string) ([]byte, error) {
 	// Check context cancellation
 	if err := ctx.Err(); err != nil {
-		return nil, gerror.Wrap(err, gerror.ErrCodeCancelled, "context cancelled before retrieving template")
+		return nil, fmt.Errorf("context cancelled before retrieving template: %w", err)
 	}
 
 	// Check cache first
@@ -186,7 +183,7 @@ func (tl *TemplateLibrary) ListTemplates(ctx context.Context) ([]string, error) 
 	})
 
 	if err != nil {
-		return nil, gerror.Wrap(err, gerror.ErrCodeIO, "failed to list templates")
+		return nil, fmt.Errorf("failed to list templates: %w", err)
 	}
 
 	return templates, nil
@@ -196,7 +193,7 @@ func (tl *TemplateLibrary) ListTemplates(ctx context.Context) ([]string, error) 
 func (tl *TemplateLibrary) ListCategories(ctx context.Context) ([]string, error) {
 	spec, err := tl.GetSpecification(ctx)
 	if err != nil {
-		return nil, gerror.Wrap(err, gerror.ErrCodeInternal, "failed to get specification")
+		return nil, fmt.Errorf("failed to get specification: %w", err)
 	}
 
 	var categories []string
@@ -211,13 +208,12 @@ func (tl *TemplateLibrary) ListCategories(ctx context.Context) ([]string, error)
 func (tl *TemplateLibrary) GetCategory(ctx context.Context, categoryName string) (*Category, error) {
 	spec, err := tl.GetSpecification(ctx)
 	if err != nil {
-		return nil, gerror.Wrap(err, gerror.ErrCodeInternal, "failed to get specification")
+		return nil, fmt.Errorf("failed to get specification: %w", err)
 	}
 
 	category, exists := spec.Categories[categoryName]
 	if !exists {
-		return nil, gerror.New(gerror.ErrCodeNotFound, "category not found", nil).
-			WithDetails("category", categoryName)
+		return nil, fmt.Errorf("category not found: category=%s", categoryName)
 	}
 
 	return &category, nil
@@ -227,7 +223,7 @@ func (tl *TemplateLibrary) GetCategory(ctx context.Context, categoryName string)
 func (tl *TemplateLibrary) ListPresets(ctx context.Context) ([]string, error) {
 	spec, err := tl.GetSpecification(ctx)
 	if err != nil {
-		return nil, gerror.Wrap(err, gerror.ErrCodeInternal, "failed to get specification")
+		return nil, fmt.Errorf("failed to get specification: %w", err)
 	}
 
 	var presets []string
@@ -242,13 +238,12 @@ func (tl *TemplateLibrary) ListPresets(ctx context.Context) ([]string, error) {
 func (tl *TemplateLibrary) GetPreset(ctx context.Context, presetName string) (*Preset, error) {
 	spec, err := tl.GetSpecification(ctx)
 	if err != nil {
-		return nil, gerror.Wrap(err, gerror.ErrCodeInternal, "failed to get specification")
+		return nil, fmt.Errorf("failed to get specification: %w", err)
 	}
 
 	preset, exists := spec.Presets[presetName]
 	if !exists {
-		return nil, gerror.New(gerror.ErrCodeNotFound, "preset not found", nil).
-			WithDetails("preset", presetName)
+		return nil, fmt.Errorf("preset not found: preset=%s", presetName)
 	}
 
 	return &preset, nil
@@ -258,7 +253,7 @@ func (tl *TemplateLibrary) GetPreset(ctx context.Context, presetName string) (*P
 func (tl *TemplateLibrary) ValidateVariables(ctx context.Context, vars map[string]interface{}) error {
 	spec, err := tl.GetSpecification(ctx)
 	if err != nil {
-		return gerror.Wrap(err, gerror.ErrCodeInternal, "failed to get specification")
+		return fmt.Errorf("failed to get specification: %w", err)
 	}
 
 	for varName, schema := range spec.VariableSchemas {
@@ -266,8 +261,7 @@ func (tl *TemplateLibrary) ValidateVariables(ctx context.Context, vars map[strin
 
 		// Check required variables
 		if schema.Required && !exists {
-			return gerror.New(gerror.ErrCodeValidation, "required variable missing", nil).
-				WithDetails("variable", varName)
+			return fmt.Errorf("required variable missing: variable=%s", varName)
 		}
 
 		// Skip validation if variable is not provided and not required
@@ -290,10 +284,7 @@ func (tl *TemplateLibrary) validateVariable(name string, value interface{}, sche
 	switch schema.Type {
 	case "string":
 		if _, ok := value.(string); !ok {
-			return gerror.New(gerror.ErrCodeValidation, "variable must be a string", nil).
-				WithDetails("variable", name).
-				WithDetails("expected_type", "string").
-				WithDetails("actual_type", fmt.Sprintf("%T", value))
+			return fmt.Errorf("variable must be a string: variable=%s, expected_type=string, actual_type=%T", name, value)
 		}
 		strValue := value.(string)
 
@@ -301,10 +292,7 @@ func (tl *TemplateLibrary) validateVariable(name string, value interface{}, sche
 		if schema.Pattern != "" {
 			// Simple pattern matching - in production, use regexp
 			if strings.Contains(schema.Pattern, "^[a-zA-Z0-9_-]+$") && !isValidIdentifier(strValue) {
-				return gerror.New(gerror.ErrCodeValidation, "variable does not match required pattern", nil).
-					WithDetails("variable", name).
-					WithDetails("pattern", schema.Pattern).
-					WithDetails("value", strValue)
+				return fmt.Errorf("variable does not match required pattern: variable=%s, pattern=%s, value=%s", name, schema.Pattern, strValue)
 			}
 		}
 
@@ -318,10 +306,7 @@ func (tl *TemplateLibrary) validateVariable(name string, value interface{}, sche
 				}
 			}
 			if !valid {
-				return gerror.New(gerror.ErrCodeValidation, "variable value not in allowed enum", nil).
-					WithDetails("variable", name).
-					WithDetails("allowed_values", schema.Enum).
-					WithDetails("actual_value", strValue)
+				return fmt.Errorf("variable value not in allowed enum: variable=%s, allowed_values=%v, actual_value=%s", name, schema.Enum, strValue)
 			}
 		}
 
@@ -333,32 +318,20 @@ func (tl *TemplateLibrary) validateVariable(name string, value interface{}, sche
 		case float64:
 			intValue = int(v)
 		default:
-			return gerror.New(gerror.ErrCodeValidation, "variable must be an integer", nil).
-				WithDetails("variable", name).
-				WithDetails("expected_type", "integer").
-				WithDetails("actual_type", fmt.Sprintf("%T", value))
+			return fmt.Errorf("variable must be an integer: variable=%s, expected_type=integer, actual_type=%T", name, value)
 		}
 
 		// Range validation
 		if schema.Minimum != nil && intValue < *schema.Minimum {
-			return gerror.New(gerror.ErrCodeValidation, "variable value below minimum", nil).
-				WithDetails("variable", name).
-				WithDetails("minimum", *schema.Minimum).
-				WithDetails("actual_value", intValue)
+			return fmt.Errorf("variable value below minimum: variable=%s, minimum=%d, actual_value=%d", name, *schema.Minimum, intValue)
 		}
 		if schema.Maximum != nil && intValue > *schema.Maximum {
-			return gerror.New(gerror.ErrCodeValidation, "variable value above maximum", nil).
-				WithDetails("variable", name).
-				WithDetails("maximum", *schema.Maximum).
-				WithDetails("actual_value", intValue)
+			return fmt.Errorf("variable value above maximum: variable=%s, maximum=%d, actual_value=%d", name, *schema.Maximum, intValue)
 		}
 
 	case "object":
 		if _, ok := value.(map[string]interface{}); !ok {
-			return gerror.New(gerror.ErrCodeValidation, "variable must be an object", nil).
-				WithDetails("variable", name).
-				WithDetails("expected_type", "object").
-				WithDetails("actual_type", fmt.Sprintf("%T", value))
+			return fmt.Errorf("variable must be an object: variable=%s, expected_type=object, actual_type=%T", name, value)
 		}
 		// Note: For full validation, we'd recursively validate object properties
 	}
@@ -404,12 +377,12 @@ type TemplateStats struct {
 func (tl *TemplateLibrary) GetStats(ctx context.Context) (*TemplateStats, error) {
 	spec, err := tl.GetSpecification(ctx)
 	if err != nil {
-		return nil, gerror.Wrap(err, gerror.ErrCodeInternal, "failed to get specification")
+		return nil, fmt.Errorf("failed to get specification: %w", err)
 	}
 
 	templates, err := tl.ListTemplates(ctx)
 	if err != nil {
-		return nil, gerror.Wrap(err, gerror.ErrCodeInternal, "failed to list templates")
+		return nil, fmt.Errorf("failed to list templates: %w", err)
 	}
 
 	// Count templates per category

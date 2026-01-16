@@ -5,9 +5,9 @@ package config
 
 import (
 	"context"
+	"fmt"
 	"time"
 
-	"github.com/guild-framework/guild-core/pkg/gerror"
 	"gopkg.in/yaml.v3"
 )
 
@@ -239,46 +239,44 @@ func NewGitHubSyncer(config *SyncConfig, paths *PathResolver) (*GitHubSyncer, er
 // Placeholder - full implementation in Phase 002.
 func (s *GitHubSyncer) Sync(ctx context.Context) ([]SyncResult, error) {
 	if err := ctx.Err(); err != nil {
-		return nil, gerror.Wrap(err, gerror.ErrCodeCancelled, "context cancelled")
+		return nil, fmt.Errorf("context cancelled: %w", err)
 	}
 
 	// TODO: Implement in Phase 002
-	return nil, gerror.New(gerror.ErrCodeNotImplemented, "sync not yet implemented", nil).
-		WithDetails("hint", "run 'scaffold sync' after Phase 002 is complete")
+	return nil, fmt.Errorf("sync not yet implemented: hint=%v", "run 'scaffold sync' after Phase 002 is complete")
 }
 
 // SyncTemplate synchronizes a specific template from GitHub.
 // Placeholder - full implementation in Phase 002.
 func (s *GitHubSyncer) SyncTemplate(ctx context.Context, name string) (*SyncResult, error) {
 	if err := ctx.Err(); err != nil {
-		return nil, gerror.Wrap(err, gerror.ErrCodeCancelled, "context cancelled")
+		return nil, fmt.Errorf("context cancelled: %w", err)
 	}
 
 	// TODO: Implement in Phase 002
-	return nil, gerror.New(gerror.ErrCodeNotImplemented, "sync not yet implemented", nil).
-		WithDetails("template", name)
+	return nil, fmt.Errorf("sync not yet implemented: template=%v", name)
 }
 
 // ListRemote lists available templates from the remote repository.
 // Placeholder - full implementation in Phase 002.
 func (s *GitHubSyncer) ListRemote(ctx context.Context) ([]RemoteTemplate, error) {
 	if err := ctx.Err(); err != nil {
-		return nil, gerror.Wrap(err, gerror.ErrCodeCancelled, "context cancelled")
+		return nil, fmt.Errorf("context cancelled: %w", err)
 	}
 
 	// TODO: Implement in Phase 002
-	return nil, gerror.New(gerror.ErrCodeNotImplemented, "list remote not yet implemented", nil)
+	return nil, fmt.Errorf("list remote not yet implemented")
 }
 
 // CheckUpdates checks for available updates without syncing.
 // Placeholder - full implementation in Phase 002.
 func (s *GitHubSyncer) CheckUpdates(ctx context.Context) ([]UpdateInfo, error) {
 	if err := ctx.Err(); err != nil {
-		return nil, gerror.Wrap(err, gerror.ErrCodeCancelled, "context cancelled")
+		return nil, fmt.Errorf("context cancelled: %w", err)
 	}
 
 	// TODO: Implement in Phase 002
-	return nil, gerror.New(gerror.ErrCodeNotImplemented, "check updates not yet implemented", nil)
+	return nil, fmt.Errorf("check updates not yet implemented")
 }
 
 // MarshalYAML implements yaml.Marshaler for RegistryFile.

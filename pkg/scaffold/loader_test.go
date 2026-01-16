@@ -61,8 +61,7 @@ tree:
 }
 
 func TestRegistryLoader_WithoutBuiltins(t *testing.T) {
-	loader := NewRegistryLoaderWithPaths("/nonexistent", "/nonexistent").
-		WithBuiltins(false)
+	loader := NewRegistryLoaderWithPaths("/nonexistent", "/nonexistent").WithBuiltins(false)
 
 	ctx := context.Background()
 	registry, err := loader.Load(ctx)

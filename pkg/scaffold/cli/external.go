@@ -11,7 +11,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/guild-framework/guild-core/pkg/gerror"
 	"github.com/lancekrogers/guild-scaffold/pkg/scaffold"
 )
 
@@ -19,8 +18,7 @@ import (
 func LoadExternalTemplate(ctx context.Context, templatePath string, options *InitOptions) error {
 	// Check if the template path exists
 	if _, err := os.Stat(templatePath); err != nil {
-		return gerror.Wrap(err, gerror.ErrCodeNotFound, "template file not found").
-			WithDetails("path", templatePath)
+		return fmt.Errorf("template file not found (path=%v): %w", templatePath, err)
 	}
 
 	// Get the directory containing the template
@@ -32,27 +30,25 @@ func LoadExternalTemplate(ctx context.Context, templatePath string, options *Ini
 	// Create output filesystem
 	outputFS, err := scaffold.NewOSFileSystem(options.OutputDirectory)
 	if err != nil {
-		return gerror.Wrap(err, gerror.ErrCodeInternal, "failed to create output filesystem")
+		return fmt.Errorf("failed to create output filesystem: %w", err)
 	}
 
 	// Load the recipe first to get the templates_dir
 	templateFile := filepath.Base(templatePath)
 	data, err := fs.ReadFile(templateDirFS, templateFile)
 	if err != nil {
-		return gerror.Wrap(err, gerror.ErrCodeInternal, "failed to read template file").
-			WithDetails("path", templatePath)
+		return fmt.Errorf("failed to read template file (path=%v): %w", templatePath, err)
 	}
 
 	// Parse recipe to get templates_dir
 	parser, err := scaffold.NewParser(scaffold.DefaultParseOptions)
 	if err != nil {
-		return gerror.Wrap(err, gerror.ErrCodeInternal, "failed to create parser")
+		return fmt.Errorf("failed to create parser: %w", err)
 	}
 
 	recipe, err := parser.ParseWithOptions(ctx, data, scaffold.DefaultParseOptions)
 	if err != nil {
-		return gerror.Wrap(err, gerror.ErrCodeInternal, "failed to parse template").
-			WithDetails("path", templatePath)
+		return fmt.Errorf("failed to parse template (path=%v): %w", templatePath, err)
 	}
 
 	// Set up the correct template filesystem by searching multiple paths
@@ -88,7 +84,7 @@ func LoadExternalTemplate(ctx context.Context, templatePath string, options *Ini
 	// Create scaffold engine with correct template filesystem
 	engine, err := scaffold.NewEngine(templateFS, outputFS)
 	if err != nil {
-		return gerror.Wrap(err, gerror.ErrCodeInternal, "failed to create scaffold engine")
+		return fmt.Errorf("failed to create scaffold engine: %w", err)
 	}
 
 	// Since we've already resolved the templates directory into the filesystem,
@@ -111,8 +107,7 @@ func LoadExternalTemplate(ctx context.Context, templatePath string, options *Ini
 				msg += fmt.Sprintf(" (and %d more errors)", len(validationErrors)-1)
 			}
 		}
-		return gerror.New(gerror.ErrCodeValidation, msg, nil).
-			WithDetails("errors", validationErrors)
+		return fmt.Errorf("%s: errors=%v", msg, validationErrors)
 	}
 
 	// Create scaffold options with correct template filesystem
@@ -150,8 +145,7 @@ func ResolveTemplatePath(templateName string) (string, error) {
 		if _, err := os.Stat(templateName); err == nil {
 			return templateName, nil
 		}
-		return "", gerror.New(gerror.ErrCodeNotFound, "template file not found", nil).
-			WithDetails("path", templateName)
+		return "", fmt.Errorf("template file not found: path=%v", templateName)
 	}
 
 	// Check relative to current directory
@@ -159,7 +153,5 @@ func ResolveTemplatePath(templateName string) (string, error) {
 		return filepath.Abs(templateName)
 	}
 
-	return "", gerror.New(gerror.ErrCodeNotFound, "template file not found", nil).
-		WithDetails("template", templateName).
-		WithDetails("suggestion", "use 'scaffold list' to see synced templates")
+	return "", fmt.Errorf("template file not found: template=%v", templateName)
 }
