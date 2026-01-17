@@ -89,8 +89,35 @@ tree:
   config/:
     app.yaml: config.yaml.tmpl
   src/:
-    _empty: true  # Creates empty directory
+    _empty: true  # Creates .gitkeep in empty directory
+  logs/:
+    _empty: true
+  data/:
+    cache/:
+      _empty: true
 ```
+
+### Empty Directories
+
+Git doesn't track empty directories. To ensure empty directories are created and persist in version control, use `_empty: true`:
+
+```yaml
+myproject/:
+  logs/:
+    _empty: true
+  data/:
+    cache/:
+      _empty: true
+    temp/:
+      _empty: true
+```
+
+This creates a `.gitkeep` file in each empty directory, allowing Git to track them. When you initialize a project from this scaffold:
+- `logs/.gitkeep` is created
+- `data/cache/.gitkeep` is created
+- `data/temp/.gitkeep` is created
+
+The `.gitkeep` file itself is empty and serves as a placeholder. If you later add actual files to these directories, you can safely delete the `.gitkeep` files.
 
 ### Template Syntax
 
