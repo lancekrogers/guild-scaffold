@@ -31,6 +31,9 @@ type FileSystem interface {
 
 	// RemoveAll removes a directory and all its contents
 	RemoveAll(path string) error
+
+	// Symlink creates a symbolic link
+	Symlink(oldname, newname string) error
 }
 
 // containsPathTraversal checks for path traversal patterns

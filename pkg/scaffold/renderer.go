@@ -105,15 +105,38 @@ func (tr *templateRenderer) RenderRecipe(ctx context.Context, recipe *Recipe, op
 			templatesUsed[file.Template] = true
 		}
 
-		// Prepare render context
-		renderCtx := tr.prepareRenderContext(recipe, file, options)
-
 		// Check if file already exists
 		// Note: file.Path is relative, and fileSystem already has basePath set
 		if tr.fileExists(file.Path) && !options.Overwrite {
 			stats.FilesSkipped++
 			continue
 		}
+
+		// Handle symlinks separately
+		if file.IsSymlink() {
+			// Write symlink (or skip in dry run)
+			if !options.Dry {
+				// Remove existing file if overwrite is enabled
+				if options.Overwrite && tr.fileExists(file.Path) {
+					if err := tr.fileSystem.Remove(file.Path); err != nil {
+						stats.FilesFailed++
+						return stats, fmt.Errorf("failed to remove existing file for symlink overwrite (filePath=%v): %w", file.Path, err)
+					}
+				}
+
+				// Create the symlink
+				if err := tr.createSymlink(ctx, file.Path, file.SymlinkTo); err != nil {
+					stats.FilesFailed++
+					return stats, fmt.Errorf("failed to create symlink (filePath=%v, target=%v): %w", file.Path, file.SymlinkTo, err)
+				}
+			}
+
+			stats.FilesGenerated++
+			continue
+		}
+
+		// Prepare render context
+		renderCtx := tr.prepareRenderContext(recipe, file, options)
 
 		var content []byte
 		var err error
@@ -246,6 +269,29 @@ func (tr *templateRenderer) writeFile(ctx context.Context, path string, content 
 	// Write file
 	if err := tr.fileSystem.WriteFile(path, content, 0644); err != nil {
 		return ErrFileWrite(path, err)
+	}
+
+	return nil
+}
+
+// createSymlink creates a symbolic link, creating parent directories as needed
+func (tr *templateRenderer) createSymlink(ctx context.Context, linkPath, target string) error {
+	// Check context cancellation
+	if err := ctx.Err(); err != nil {
+		return fmt.Errorf("context cancelled before creating symlink: %w", err)
+	}
+
+	// Create directory if needed
+	dir := filepath.Dir(linkPath)
+	if dir != "." && dir != "" {
+		if err := tr.fileSystem.MkdirAll(dir, 0755); err != nil {
+			return fmt.Errorf("failed to create directory for symlink (directory=%v): %w", dir, err)
+		}
+	}
+
+	// Create symlink
+	if err := tr.fileSystem.Symlink(target, linkPath); err != nil {
+		return fmt.Errorf("failed to create symlink (linkPath=%v, target=%v): %w", linkPath, target, err)
 	}
 
 	return nil

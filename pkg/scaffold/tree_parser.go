@@ -41,6 +41,7 @@ func (tp *TreeParser) ParseTreeFormat(data []byte) (*Recipe, error) {
 		TemplatesDir:    tp.defaultTemplatesDir,
 		Files:           []FileEntry{},
 		Vars:            make(map[string]any),
+		MirrorStructure: false,
 	}
 
 	// Extract metadata if present
@@ -52,6 +53,11 @@ func (tp *TreeParser) ParseTreeFormat(data []byte) (*Recipe, error) {
 	if templatesDir, ok := rawData["_templates_dir"].(string); ok {
 		recipe.TemplatesDir = templatesDir
 		delete(rawData, "_templates_dir")
+	}
+
+	if mirrorStructure, ok := rawData["_mirror_structure"].(bool); ok {
+		recipe.MirrorStructure = mirrorStructure
+		delete(rawData, "_mirror_structure")
 	}
 
 	if vars, ok := rawData["_vars"].(map[string]interface{}); ok {
@@ -77,16 +83,54 @@ func (tp *TreeParser) ParseTreeFormat(data []byte) (*Recipe, error) {
 	return recipe, nil
 }
 
+// generateMirroredTemplatePath generates a template path that mirrors the output path
+func (tp *TreeParser) generateMirroredTemplatePath(outputPath string) string {
+	return outputPath + ".tmpl"
+}
+
+// resolveTemplatePath resolves the final template path based on mirror mode
+func (tp *TreeParser) resolveTemplatePath(recipe *Recipe, outputPath string, providedTemplate string) string {
+	// If template is explicitly provided and not empty/nil marker, use it
+	if providedTemplate != "" && providedTemplate != "~" {
+		return providedTemplate
+	}
+
+	// If template is empty/nil marker (~), return it as-is
+	if providedTemplate == "~" {
+		return "~"
+	}
+
+	// If mirror structure is enabled and template is empty/nil, generate mirrored path
+	if recipe.MirrorStructure {
+		return tp.generateMirroredTemplatePath(outputPath)
+	}
+
+	// Default: return provided template (may be empty)
+	return providedTemplate
+}
+
 // processNode recursively processes tree nodes
 func (tp *TreeParser) processNode(currentPath string, node interface{}, recipe *Recipe) error {
 	switch v := node.(type) {
 	case string:
-		// Direct file mapping: "file.txt: template.tmpl"
-		recipe.Files = append(recipe.Files, FileEntry{
-			Path:     currentPath,
-			Template: v,
-			With:     make(map[string]any),
-		})
+		// Check for symlink syntax: "@target"
+		if strings.HasPrefix(v, "@") {
+			// This is a symlink
+			target := strings.TrimPrefix(v, "@")
+			recipe.Files = append(recipe.Files, FileEntry{
+				Path:      currentPath,
+				SymlinkTo: target,
+				With:      make(map[string]any),
+			})
+		} else {
+			// Direct file mapping: "file.txt: template.tmpl"
+			templatePath := tp.resolveTemplatePath(recipe, currentPath, v)
+			recipe.Files = append(recipe.Files, FileEntry{
+				Path:     currentPath,
+				Template: templatePath,
+				With:     make(map[string]any),
+			})
+		}
 		return nil
 
 	case map[string]interface{}:
@@ -108,9 +152,29 @@ func (tp *TreeParser) processNode(currentPath string, node interface{}, recipe *
 
 				switch tmpl := template.(type) {
 				case string:
+					// Check for symlink syntax: "@target"
+					if strings.HasPrefix(tmpl, "@") {
+						// This is a symlink
+						target := strings.TrimPrefix(tmpl, "@")
+						recipe.Files = append(recipe.Files, FileEntry{
+							Path:      filePath,
+							SymlinkTo: target,
+							With:      make(map[string]any),
+						})
+					} else {
+						templatePath := tp.resolveTemplatePath(recipe, filePath, tmpl)
+						recipe.Files = append(recipe.Files, FileEntry{
+							Path:     filePath,
+							Template: templatePath,
+							With:     make(map[string]any),
+						})
+					}
+				case nil:
+					// nil value means use mirror structure if enabled
+					templatePath := tp.resolveTemplatePath(recipe, filePath, "")
 					recipe.Files = append(recipe.Files, FileEntry{
 						Path:     filePath,
-						Template: tmpl,
+						Template: templatePath,
 						With:     make(map[string]any),
 					})
 				case map[string]interface{}:
@@ -120,9 +184,14 @@ func (tp *TreeParser) processNode(currentPath string, node interface{}, recipe *
 						With: make(map[string]any),
 					}
 
+					// Extract template if provided
+					providedTemplate := ""
 					if tmplStr, ok := tmpl["template"].(string); ok {
-						entry.Template = tmplStr
+						providedTemplate = tmplStr
 					}
+
+					// Resolve template path with mirror logic
+					entry.Template = tp.resolveTemplatePath(recipe, filePath, providedTemplate)
 
 					if with, ok := tmpl["with"].(map[string]interface{}); ok {
 						entry.With = with
@@ -184,6 +253,10 @@ func (tp *TreeParser) ConvertRecipeToTree(recipe *Recipe) (TreeFormat, error) {
 		tree["_templates_dir"] = recipe.TemplatesDir
 	}
 
+	if recipe.MirrorStructure {
+		tree["_mirror_structure"] = recipe.MirrorStructure
+	}
+
 	if len(recipe.Vars) > 0 {
 		tree["_vars"] = recipe.Vars
 	}
@@ -211,8 +284,11 @@ func (tp *TreeParser) addFileToTree(tree TreeFormat, file FileEntry) {
 
 			files := current["_files"].(map[string]interface{})
 
-			// If file has custom properties, store as object
-			if len(file.With) > 0 {
+			// Handle symlinks
+			if file.IsSymlink() {
+				files[part] = "@" + file.SymlinkTo
+			} else if len(file.With) > 0 {
+				// If file has custom properties, store as object
 				files[part] = map[string]interface{}{
 					"template": file.Template,
 					"with":     file.With,

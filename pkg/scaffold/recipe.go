@@ -13,6 +13,10 @@ type Recipe struct {
 	// TemplatesDir specifies the directory containing templates within the embedded filesystem
 	TemplatesDir string `yaml:"templates_dir" json:"templates_dir"`
 
+	// MirrorStructure enables templates directory to mirror output structure
+	// When true, template path mirrors output path: "projects/OBEY.md" -> "templates/projects/OBEY.md.tmpl"
+	MirrorStructure bool `yaml:"mirror_structure,omitempty" json:"mirror_structure,omitempty"`
+
 	// Vars contains global variables available to all templates
 	Vars map[string]any `yaml:"vars,omitempty" json:"vars,omitempty"`
 
@@ -30,6 +34,15 @@ type FileEntry struct {
 
 	// With contains file-specific variables that override global vars
 	With map[string]any `yaml:"with,omitempty" json:"with,omitempty"`
+
+	// SymlinkTo specifies the target path if this entry is a symlink
+	// When set, Template is ignored
+	SymlinkTo string `yaml:"symlink_to,omitempty" json:"symlink_to,omitempty"`
+}
+
+// IsSymlink returns true if this file entry represents a symlink
+func (fe FileEntry) IsSymlink() bool {
+	return fe.SymlinkTo != ""
 }
 
 // Options configures scaffold rendering behavior

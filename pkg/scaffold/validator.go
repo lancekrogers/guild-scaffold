@@ -236,6 +236,13 @@ func (pv *pathValidator) CheckPaths(recipe *Recipe) []ValidationError {
 		}
 		pathsSeen[file.Path] = i
 
+		// Validate symlink entries
+		if file.IsSymlink() {
+			if symlinkErrors := pv.validateSymlink(file, i); len(symlinkErrors) > 0 {
+				errors = append(errors, symlinkErrors...)
+			}
+		}
+
 		// Validate path safety
 		if pathErrors := pv.validatePathSafety(file.Path, i); len(pathErrors) > 0 {
 			errors = append(errors, pathErrors...)
@@ -245,6 +252,33 @@ func (pv *pathValidator) CheckPaths(recipe *Recipe) []ValidationError {
 		if formatErrors := pv.validatePathFormat(file.Path, i); len(formatErrors) > 0 {
 			errors = append(errors, formatErrors...)
 		}
+	}
+
+	return errors
+}
+
+// validateSymlink validates symlink entries
+func (pv *pathValidator) validateSymlink(file FileEntry, index int) []ValidationError {
+	var errors []ValidationError
+
+	// Check that symlink target is not empty
+	if strings.TrimSpace(file.SymlinkTo) == "" {
+		errors = append(errors, ValidationError{
+			Field:   fmt.Sprintf("files[%d].symlink_to", index),
+			Message: "symlink target cannot be empty",
+			Value:   file.SymlinkTo,
+			Code:    ErrCodeValidation,
+		})
+	}
+
+	// Check that template is not set when symlink_to is set
+	if file.Template != "" && file.Template != "~" {
+		errors = append(errors, ValidationError{
+			Field:   fmt.Sprintf("files[%d]", index),
+			Message: "cannot have both template and symlink_to set",
+			Value:   fmt.Sprintf("template=%s, symlink_to=%s", file.Template, file.SymlinkTo),
+			Code:    ErrCodeValidation,
+		})
 	}
 
 	return errors

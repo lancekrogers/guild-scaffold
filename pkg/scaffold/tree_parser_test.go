@@ -341,3 +341,213 @@ myproject/:
 		t.Errorf("Round trip failed: expected 4 files, got %d", len(recipe.Files))
 	}
 }
+
+func TestTreeParser_MirrorStructure(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   string
+		want    map[string]string // map of path -> template
+		wantErr bool
+	}{
+		{
+			name: "mirror structure with nil values",
+			input: `
+_scaffold_version: "1.0.0"
+_templates_dir: "templates"
+_mirror_structure: true
+
+projects/:
+  _files:
+    OBEY.md: ~
+    README.md: ~
+
+docs/:
+  api/:
+    _files:
+      reference.md: ~
+`,
+			want: map[string]string{
+				"projects/OBEY.md":        "projects/OBEY.md.tmpl",
+				"projects/README.md":      "projects/README.md.tmpl",
+				"docs/api/reference.md":   "docs/api/reference.md.tmpl",
+			},
+			wantErr: false,
+		},
+		{
+			name: "mirror structure with explicit overrides",
+			input: `
+_scaffold_version: "1.0.0"
+_templates_dir: "templates"
+_mirror_structure: true
+
+projects/:
+  _files:
+    OBEY.md: ~
+    README.md: "custom.md.tmpl"
+`,
+			want: map[string]string{
+				"projects/OBEY.md":   "projects/OBEY.md.tmpl",
+				"projects/README.md": "custom.md.tmpl",
+			},
+			wantErr: false,
+		},
+		{
+			name: "mirror structure disabled uses explicit templates",
+			input: `
+_scaffold_version: "1.0.0"
+_templates_dir: "templates"
+_mirror_structure: false
+
+projects/:
+  _files:
+    OBEY.md: obey.tmpl
+    README.md: readme.tmpl
+`,
+			want: map[string]string{
+				"projects/OBEY.md":   "obey.tmpl",
+				"projects/README.md": "readme.tmpl",
+			},
+			wantErr: false,
+		},
+		{
+			name: "mirror structure with empty marker preserves it",
+			input: `
+_scaffold_version: "1.0.0"
+_templates_dir: "templates"
+_mirror_structure: true
+
+logs/:
+  _empty: true
+`,
+			want: map[string]string{
+				"logs/.gitkeep": "~",
+			},
+			wantErr: false,
+		},
+		{
+			name: "deeply nested mirror structure",
+			input: `
+_scaffold_version: "1.0.0"
+_templates_dir: "templates"
+_mirror_structure: true
+
+app/:
+  src/:
+    components/:
+      auth/:
+        _files:
+          login.tsx: ~
+          register.tsx: ~
+    utils/:
+      _files:
+        helpers.ts: ~
+`,
+			want: map[string]string{
+				"app/src/components/auth/login.tsx":    "app/src/components/auth/login.tsx.tmpl",
+				"app/src/components/auth/register.tsx": "app/src/components/auth/register.tsx.tmpl",
+				"app/src/utils/helpers.ts":             "app/src/utils/helpers.ts.tmpl",
+			},
+			wantErr: false,
+		},
+		{
+			name: "mirror structure with file-specific properties",
+			input: `
+_scaffold_version: "1.0.0"
+_templates_dir: "templates"
+_mirror_structure: true
+
+config/:
+  _files:
+    settings.yaml:
+      with:
+        env: production
+`,
+			want: map[string]string{
+				"config/settings.yaml": "config/settings.yaml.tmpl",
+			},
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tp := NewTreeParser()
+			got, err := tp.ParseTreeFormat([]byte(tt.input))
+
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ParseTreeFormat() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+			if !tt.wantErr {
+				// Create map of got files for comparison
+				gotMap := make(map[string]string)
+				for _, f := range got.Files {
+					gotMap[f.Path] = f.Template
+				}
+
+				if !reflect.DeepEqual(gotMap, tt.want) {
+					t.Errorf("Files mapping mismatch:\ngot:  %+v\nwant: %+v", gotMap, tt.want)
+				}
+			}
+		})
+	}
+}
+
+func TestTreeParser_MirrorStructureRoundTrip(t *testing.T) {
+	tp := NewTreeParser()
+
+	originalYAML := `
+_scaffold_version: "1.0.0"
+_templates_dir: "templates"
+_mirror_structure: true
+_vars:
+  name: TestProject
+
+projects/:
+  _files:
+    OBEY.md: ~
+    README.md: "custom.md.tmpl"
+  docs/:
+    _files:
+      api.md: ~
+`
+
+	// Parse the tree format
+	recipe, err := tp.ParseTreeFormat([]byte(originalYAML))
+	if err != nil {
+		t.Fatalf("ParseTreeFormat() error = %v", err)
+	}
+
+	// Verify mirror structure flag was parsed
+	if !recipe.MirrorStructure {
+		t.Error("MirrorStructure should be true")
+	}
+
+	// Verify files have correct template paths
+	expectedFiles := map[string]string{
+		"projects/OBEY.md":     "projects/OBEY.md.tmpl",
+		"projects/README.md":   "custom.md.tmpl",
+		"projects/docs/api.md": "projects/docs/api.md.tmpl",
+	}
+
+	gotMap := make(map[string]string)
+	for _, f := range recipe.Files {
+		gotMap[f.Path] = f.Template
+	}
+
+	if !reflect.DeepEqual(gotMap, expectedFiles) {
+		t.Errorf("Files mapping mismatch:\ngot:  %+v\nwant: %+v", gotMap, expectedFiles)
+	}
+
+	// Convert back to tree
+	tree, err := tp.ConvertRecipeToTree(recipe)
+	if err != nil {
+		t.Fatalf("ConvertRecipeToTree() error = %v", err)
+	}
+
+	// Verify mirror_structure is in tree
+	if mirrorStructure, ok := tree["_mirror_structure"].(bool); !ok || !mirrorStructure {
+		t.Errorf("_mirror_structure should be true in tree output, got: %v", tree["_mirror_structure"])
+	}
+}

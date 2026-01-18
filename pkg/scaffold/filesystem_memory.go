@@ -12,16 +12,18 @@ import (
 
 // MemoryFileSystem implements FileSystem in memory for testing
 type MemoryFileSystem struct {
-	files map[string][]byte
-	dirs  map[string]bool
-	mu    sync.RWMutex
+	files    map[string][]byte
+	dirs     map[string]bool
+	symlinks map[string]string // maps link path to target path
+	mu       sync.RWMutex
 }
 
 // NewMemoryFileSystem creates a new in-memory filesystem
 func NewMemoryFileSystem() *MemoryFileSystem {
 	return &MemoryFileSystem{
-		files: make(map[string][]byte),
-		dirs:  make(map[string]bool),
+		files:    make(map[string][]byte),
+		dirs:     make(map[string]bool),
+		symlinks: make(map[string]string),
 	}
 }
 
@@ -144,6 +146,11 @@ func (mfs *MemoryFileSystem) Exists(path string) bool {
 		return true
 	}
 
+	// Check symlinks
+	if _, exists := mfs.symlinks[cleanPath]; exists {
+		return true
+	}
+
 	return false
 }
 
@@ -234,3 +241,55 @@ func (mfi *memoryFileInfo) Mode() os.FileMode {
 func (mfi *memoryFileInfo) ModTime() time.Time { return time.Now() }
 func (mfi *memoryFileInfo) IsDir() bool        { return mfi.isDir }
 func (mfi *memoryFileInfo) Sys() interface{}   { return nil }
+
+// Symlink creates a symbolic link in memory
+func (mfs *MemoryFileSystem) Symlink(target, linkPath string) error {
+	mfs.mu.Lock()
+	defer mfs.mu.Unlock()
+
+	cleanLinkPath := filepath.Clean(linkPath)
+
+	// Check if link already exists
+	if _, exists := mfs.files[cleanLinkPath]; exists {
+		return ErrFileExists(linkPath)
+	}
+	if _, exists := mfs.symlinks[cleanLinkPath]; exists {
+		return ErrFileExists(linkPath)
+	}
+
+	// Ensure parent directory exists
+	dir := filepath.Dir(cleanLinkPath)
+	if dir != "." && dir != "/" {
+		mfs.dirs[dir] = true
+	}
+
+	// Store the symlink
+	mfs.symlinks[cleanLinkPath] = target
+
+	return nil
+}
+
+// ReadLink reads the target of a symbolic link
+func (mfs *MemoryFileSystem) ReadLink(path string) (string, error) {
+	mfs.mu.RLock()
+	defer mfs.mu.RUnlock()
+
+	cleanPath := filepath.Clean(path)
+
+	target, exists := mfs.symlinks[cleanPath]
+	if !exists {
+		return "", fmt.Errorf("not a symlink: path=%v", path)
+	}
+
+	return target, nil
+}
+
+// IsSymlink checks if a path is a symbolic link
+func (mfs *MemoryFileSystem) IsSymlink(path string) bool {
+	mfs.mu.RLock()
+	defer mfs.mu.RUnlock()
+
+	cleanPath := filepath.Clean(path)
+	_, exists := mfs.symlinks[cleanPath]
+	return exists
+}

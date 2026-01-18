@@ -272,3 +272,22 @@ func (osfs *OSFileSystem) safePath(path string) (string, error) {
 
 	return absFullPath, nil
 }
+
+// Symlink creates a symbolic link
+func (osfs *OSFileSystem) Symlink(oldname, newname string) error {
+	safeOld, err := osfs.safePath(oldname)
+	if err != nil {
+		return err
+	}
+
+	safeNew, err := osfs.safePath(newname)
+	if err != nil {
+		return err
+	}
+
+	if err := os.Symlink(safeOld, safeNew); err != nil {
+		return fmt.Errorf("failed to create symlink (oldname=%s, newname=%s): %w", oldname, newname, err)
+	}
+
+	return nil
+}
