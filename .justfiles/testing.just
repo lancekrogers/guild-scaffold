@@ -1,9 +1,51 @@
 # Test recipes for guild-scaffold
 
+# Build tool for dashboard display
+BUILDTOOL := "go run ./internal/buildutil"
+
 # Show available test commands
 [private]
 default:
     @just --list --unsorted --justfile {{source_file()}}
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Dashboard Mode (Rich Terminal UI)
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Dashboard: Run all tests with rich UI
+[no-cd]
+dashboard:
+    @{{BUILDTOOL}} test
+    @{{BUILDTOOL}} integration
+
+# Dashboard: Unit tests only
+[no-cd]
+dashboard-unit:
+    @{{BUILDTOOL}} test
+
+# Dashboard: Integration tests only
+[no-cd]
+dashboard-integration:
+    @{{BUILDTOOL}} integration
+
+# Dashboard: Full pipeline (clean, build, test, integration)
+[no-cd]
+dashboard-all:
+    @{{BUILDTOOL}} all
+
+# Dashboard: Build with vet
+[no-cd]
+dashboard-build:
+    @{{BUILDTOOL}} build
+
+# Dashboard: Clean artifacts
+[no-cd]
+dashboard-clean:
+    @{{BUILDTOOL}} clean
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Standard Mode (Verbose Output)
+# ─────────────────────────────────────────────────────────────────────────────
 
 # Run all tests (unit + integration)
 [no-cd]
