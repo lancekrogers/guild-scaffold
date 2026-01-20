@@ -60,9 +60,19 @@ func (tp *TreeParser) ParseTreeFormat(data []byte) (*Recipe, error) {
 		delete(rawData, "_mirror_structure")
 	}
 
+	if scanTemplates, ok := rawData["_scan_templates"].(bool); ok {
+		recipe.ScanTemplates = scanTemplates
+		delete(rawData, "_scan_templates")
+	}
+
 	if vars, ok := rawData["_vars"].(map[string]interface{}); ok {
 		recipe.Vars = vars
 		delete(rawData, "_vars")
+	}
+
+	// If scan_templates is enabled, skip tree processing - files will be discovered by scanning
+	if recipe.ScanTemplates {
+		return recipe, nil
 	}
 
 	// Process the tree structure

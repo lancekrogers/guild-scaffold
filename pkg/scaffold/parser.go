@@ -71,6 +71,15 @@ func (p *yamlParser) ParseRecipe(ctx context.Context, fsys fs.FS, path string) (
 		return nil, err
 	}
 
+	// If scan_templates is enabled, discover files from templates directory
+	if recipe.ScanTemplates {
+		entries, scanErr := ScanTemplatesDir(fsys, recipe.TemplatesDir)
+		if scanErr != nil {
+			return nil, fmt.Errorf("failed to scan templates directory: %w", scanErr)
+		}
+		recipe.Files = entries
+	}
+
 	// Cache successful parse
 	p.cache.Set(cacheKey, recipe)
 
@@ -193,17 +202,25 @@ func (p *yamlParser) parseYAML(data []byte, filename string) (*Recipe, error) {
 
 // isTreeFormat checks if the YAML data is in tree-like format
 func isTreeFormat(data []byte) bool {
-	// Quick check for tree format indicators
 	dataStr := string(data)
-
-	// Tree format has directories with trailing slashes and _files markers
-	hasTreeIndicators := strings.Contains(dataStr, "/:") &&
-		(strings.Contains(dataStr, "_files:") || strings.Contains(dataStr, "_empty:"))
 
 	// Standard format has a top-level files: array
 	hasStandardFormat := regexp.MustCompile(`(?m)^files:\s*$`).MatchString(dataStr)
+	if hasStandardFormat {
+		return false
+	}
 
-	return hasTreeIndicators && !hasStandardFormat
+	// Tree format indicators:
+	// 1. Has underscore-prefixed metadata keys (_scaffold_version, _scan_templates, etc.)
+	hasTreeMetadata := strings.Contains(dataStr, "_scaffold_version:") ||
+		strings.Contains(dataStr, "_scan_templates:") ||
+		strings.Contains(dataStr, "_mirror_structure:")
+
+	// 2. Has directories with trailing slashes and _files/_empty markers
+	hasTreeStructure := strings.Contains(dataStr, "/:") &&
+		(strings.Contains(dataStr, "_files:") || strings.Contains(dataStr, "_empty:"))
+
+	return hasTreeMetadata || hasTreeStructure
 }
 
 // enhanceYAMLError adds context and line information to YAML errors
@@ -275,7 +292,8 @@ func (p *yamlParser) validateRequiredFields(recipe *Recipe) error {
 	// TemplatesDir is optional - it can be empty or set to a specific directory
 	// Removed the requirement for templates_dir
 
-	if len(recipe.Files) == 0 {
+	// Skip Files validation if scan_templates is enabled (files will be discovered later)
+	if !recipe.ScanTemplates && len(recipe.Files) == 0 {
 		errors = append(errors, ValidationError{
 			Field:   "files",
 			Message: "at least one file entry is required",
