@@ -80,7 +80,10 @@ func (tr *templateRenderer) RenderTemplate(ctx context.Context, templateName str
 // RenderRecipe renders all files defined in a recipe
 func (tr *templateRenderer) RenderRecipe(ctx context.Context, recipe *Recipe, options Options) (*ScaffoldStats, error) {
 	stats := &ScaffoldStats{
-		TotalFiles: len(recipe.Files),
+		TotalFiles:   len(recipe.Files),
+		CreatedFiles: []string{},
+		CreatedDirs:  []string{},
+		SkippedPaths: []string{},
 	}
 
 	startTime := time.Now()
@@ -90,6 +93,9 @@ func (tr *templateRenderer) RenderRecipe(ctx context.Context, recipe *Recipe, op
 
 	// Track unique templates for stats
 	templatesUsed := make(map[string]bool)
+
+	// Track created directories to avoid duplicates
+	createdDirsMap := make(map[string]bool)
 
 	// Process each file
 	for i, file := range recipe.Files {
@@ -109,6 +115,7 @@ func (tr *templateRenderer) RenderRecipe(ctx context.Context, recipe *Recipe, op
 		// Note: file.Path is relative, and fileSystem already has basePath set
 		if tr.fileExists(file.Path) && !options.Overwrite {
 			stats.FilesSkipped++
+			stats.SkippedPaths = append(stats.SkippedPaths, file.Path)
 			continue
 		}
 
@@ -124,6 +131,13 @@ func (tr *templateRenderer) RenderRecipe(ctx context.Context, recipe *Recipe, op
 					}
 				}
 
+				// Track parent directory creation
+				dir := filepath.Dir(file.Path)
+				if dir != "." && dir != "" && !createdDirsMap[dir] {
+					createdDirsMap[dir] = true
+					stats.CreatedDirs = append(stats.CreatedDirs, dir)
+				}
+
 				// Create the symlink
 				if err := tr.createSymlink(ctx, file.Path, file.SymlinkTo); err != nil {
 					stats.FilesFailed++
@@ -132,6 +146,7 @@ func (tr *templateRenderer) RenderRecipe(ctx context.Context, recipe *Recipe, op
 			}
 
 			stats.FilesGenerated++
+			stats.CreatedFiles = append(stats.CreatedFiles, file.Path)
 			continue
 		}
 
@@ -169,6 +184,13 @@ func (tr *templateRenderer) RenderRecipe(ctx context.Context, recipe *Recipe, op
 				}
 			}
 
+			// Track parent directory creation
+			dir := filepath.Dir(file.Path)
+			if dir != "." && dir != "" && !createdDirsMap[dir] {
+				createdDirsMap[dir] = true
+				stats.CreatedDirs = append(stats.CreatedDirs, dir)
+			}
+
 			// Use relative path since fileSystem has basePath configured
 			if err := tr.writeFile(ctx, file.Path, content); err != nil {
 				stats.FilesFailed++
@@ -177,6 +199,7 @@ func (tr *templateRenderer) RenderRecipe(ctx context.Context, recipe *Recipe, op
 		}
 
 		stats.FilesGenerated++
+		stats.CreatedFiles = append(stats.CreatedFiles, file.Path)
 	}
 
 	stats.TemplatesParsed = len(templatesUsed)

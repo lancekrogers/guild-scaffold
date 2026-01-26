@@ -135,4 +135,13 @@ type ScaffoldStats struct {
 
 	// TemplatesParsed is the number of unique templates parsed
 	TemplatesParsed int
+
+	// CreatedFiles contains paths of files that were created (relative to dest)
+	CreatedFiles []string
+
+	// CreatedDirs contains paths of directories that were created (relative to dest)
+	CreatedDirs []string
+
+	// SkippedPaths contains paths that were skipped (already existed)
+	SkippedPaths []string
 }
