@@ -457,17 +457,17 @@ func NewSharedContainer() (*TestContainer, error) {
 		return nil, fmt.Errorf("failed to build scaffold binary: %w", err)
 	}
 
-	// Get library path for template mounting
+	// Get test fixtures path for template mounting
 	cwd, err := os.Getwd()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get working directory: %w", err)
 	}
-	projectRoot := filepath.Join(cwd, "../..")
-	projectRoot, err = filepath.Abs(projectRoot)
+	// tests/integration/fixtures/scaffolds contains test scaffolds
+	fixturesPath := filepath.Join(cwd, "fixtures", "scaffolds")
+	fixturesPath, err = filepath.Abs(fixturesPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get absolute path: %w", err)
 	}
-	libraryPath := filepath.Join(projectRoot, "library")
 
 	req := testcontainers.ContainerRequest{
 		Image:      "alpine:latest",
@@ -481,7 +481,7 @@ func NewSharedContainer() (*TestContainer, error) {
 				ReadOnly: false,
 			},
 			{
-				Source:   testcontainers.GenericBindMountSource{HostPath: libraryPath},
+				Source:   testcontainers.GenericBindMountSource{HostPath: fixturesPath},
 				Target:   "/root/.config/guild/templates", // XDG config location
 				ReadOnly: true,
 			},

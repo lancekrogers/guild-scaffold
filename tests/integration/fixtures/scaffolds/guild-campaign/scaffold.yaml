@@ -1,0 +1,20 @@
+name: guild-campaign
+version: "1.0.0"
+description: "Test scaffold for integration tests"
+
+variables:
+  campaign_name:
+    type: string
+    required: true
+    description: "Name of the campaign"
+    pattern: "^[a-zA-Z0-9_-]+$"
+
+  description:
+    type: string
+    default: "A test campaign"
+    description: "Campaign description"
+
+tree:
+  .campaign/:
+    campaign.yaml: campaign.yaml.tmpl
+  README.md: README.md.tmpl

@@ -1,8 +1,6 @@
 # Guild Scaffold
 
-A generic, template-agnostic project scaffolding tool. Create and manage reusable project templates with variable substitution and directory structure generation.
-
-> **Note**: Despite the "Guild" name (from its origins), this tool is completely generic and works with any project type. The name is just a name.
+A template-agnostic project scaffolding tool. Create and manage reusable project templates with variable substitution and directory structure generation.
 
 ## Features
 
@@ -79,7 +77,7 @@ To install a scaffold from the examples directory:
 
 ```bash
 # Copy an example scaffold to your global templates directory
-cp -r examples/guild-campaign ~/.config/guild/templates/
+cp -r examples/go-cli ~/.config/guild/templates/
 
 # Or create a new scaffold
 mkdir -p ~/.config/guild/templates/my-scaffold
@@ -253,19 +251,18 @@ scaffold sync --from /path/to/scaffolds
 
 The `examples/` directory contains sample scaffolds:
 
-- `guild-campaign/` - Full workspace scaffold with configuration directories
-- `minimal.yaml` - Minimal scaffold example
-- `go-cli/` - Go CLI application template
-- And more...
+- `minimal/` - Bare-bones scaffold with README and gitignore
+- `go-cli/` - Go CLI application template with justfile
+- Additional YAML examples for reference
 
 To use an example:
 
 ```bash
 # Copy to global templates
-cp -r examples/guild-campaign ~/.config/guild/templates/
+cp -r examples/minimal ~/.config/guild/templates/
 
 # Then use it
-scaffold init my-project --template guild-campaign
+scaffold init my-project --template minimal
 ```
 
 ## Development

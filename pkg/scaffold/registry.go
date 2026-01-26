@@ -28,8 +28,9 @@ var (
 
 // Default scaffold names
 const (
-	// BuiltinScaffoldName is the name of the example guild-campaign scaffold
-	BuiltinScaffoldName = "guild-campaign"
+	// BuiltinScaffoldName is the default scaffold name used when none specified.
+	// Deprecated: This constant is kept for backward compatibility.
+	BuiltinScaffoldName = "minimal"
 )
 
 func init() {
