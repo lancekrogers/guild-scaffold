@@ -107,39 +107,53 @@ Each scaffold is a directory containing:
 ```
 my-scaffold/
 ├── scaffold.yaml      # Scaffold definition
-└── templates/         # Template files
+└── templates/         # Template files (mirrors output structure)
     ├── README.md.tmpl
-    └── config.yaml.tmpl
+    ├── go.mod.tmpl
+    └── cmd/
+        └── app/
+            └── main.go.tmpl
 ```
 
-### Scaffold Definition (`scaffold.yaml`)
+### Scan-Based Scaffolds (Recommended)
+
+The simplest approach - templates mirror your desired output structure:
+
+```yaml
+# scaffold.yaml
+scaffold_version: "1.0.0"
+templates_dir: templates
+mirror_structure: true
+scan_templates: true
+
+vars:
+  project_name: ""
+  module_path: ""
+  description: "A project"
+```
+
+With `scan_templates: true`, the directory structure under `templates/` becomes your output. Just create your templates where you want them to appear.
+
+### Explicit Tree Scaffolds
+
+For more control, define the structure explicitly:
 
 ```yaml
 name: my-scaffold
 version: "1.0"
 description: "Description of this scaffold"
 
-# Variable definitions
 variables:
   project_name:
     type: string
     required: true
-    description: "Name of the project"
 
-  port:
-    type: integer
-    default: 8080
-    description: "Server port"
-
-# Directory structure (tree format)
 tree:
   README.md: README.md.tmpl
   config/:
     app.yaml: config.yaml.tmpl
   src/:
-    _empty: true  # Creates .gitkeep in empty directory
-  logs/:
-    _empty: true
+    _empty: true  # Creates .gitkeep
 ```
 
 ### Variable Types
@@ -251,18 +265,21 @@ scaffold sync --from /path/to/scaffolds
 
 The `examples/` directory contains sample scaffolds:
 
-- `minimal/` - Bare-bones scaffold with README and gitignore
-- `go-cli/` - Go CLI application template with justfile
+- `go-project/` - **Recommended** - Uses scan-based approach with mirrored structure
+- `minimal/` - Bare-bones scaffold with explicit tree
+- `go-cli/` - Go CLI with explicit tree and justfile
 - Additional YAML examples for reference
 
 To use an example:
 
 ```bash
 # Copy to global templates
-cp -r examples/minimal ~/.config/guild/templates/
+cp -r examples/go-project ~/.config/guild/templates/
 
 # Then use it
-scaffold init my-project --template minimal
+scaffold init my-app --template go-project \
+  --var project_name=my-app \
+  --var module_path=github.com/user/my-app
 ```
 
 ## Development

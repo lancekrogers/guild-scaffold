@@ -14,7 +14,35 @@ variables:
     default: "A test campaign"
     description: "Campaign description"
 
+  provider:
+    type: string
+    default: "anthropic"
+    enum: [anthropic, openai, ollama]
+
+  model:
+    type: string
+    default: "claude-sonnet-4-20250514"
+
 tree:
   .campaign/:
     campaign.yaml: campaign.yaml.tmpl
+    guilds/:
+      _empty: true
+    agents/:
+      _empty: true
+    archives/:
+      _empty: true
+    prompts/:
+      _empty: true
+  commissions/:
+    _empty: true
+  corpus/:
+    _empty: true
+  kanban/:
+    todo/:
+      _empty: true
+    in-progress/:
+      _empty: true
+    done/:
+      _empty: true
   README.md: README.md.tmpl

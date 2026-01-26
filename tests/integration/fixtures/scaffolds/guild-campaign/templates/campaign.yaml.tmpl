@@ -1,2 +1,5 @@
 name: {{ .vars.campaign_name }}
 description: {{ .vars.description | default "A test campaign" }}
+
+provider: {{ .vars.provider | default "anthropic" }}
+model: {{ .vars.model | default "claude-sonnet-4-20250514" }}

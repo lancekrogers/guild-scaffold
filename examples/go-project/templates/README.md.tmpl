@@ -1,0 +1,16 @@
+# {{ .vars.project_name }}
+
+{{ .vars.description }}
+
+## Installation
+
+```bash
+go install {{ .vars.module_path }}@latest
+```
+
+## Development
+
+```bash
+go build ./...
+go test ./...
+```

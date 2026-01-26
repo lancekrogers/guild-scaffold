@@ -1,0 +1,12 @@
+# Go Project Scaffold
+# Uses scan_templates to auto-discover structure from templates directory
+scaffold_version: "1.0.0"
+templates_dir: templates
+mirror_structure: true
+scan_templates: true
+
+vars:
+  project_name: ""
+  module_path: ""
+  description: "A Go project"
+  go_version: "1.22"
