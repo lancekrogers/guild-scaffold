@@ -1,5 +1,5 @@
-// Copyright (C) 2025 SWS Industries LLC (DBA Blockhead Consulting)
-// SPDX-License-Identifier: LicenseRef-ANGRY-GOAT-0.2
+// Copyright (c) 2025 Lance Rogers
+// SPDX-License-Identifier: MIT
 
 package scaffold
 
@@ -10,20 +10,39 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/lancekrogers/guild-scaffold/pkg/scaffold/config"
 	"gopkg.in/yaml.v3"
 )
 
-// Registry file locations
-const (
-	// GlobalRegistryPath is the default path for the global scaffold registry
+// Registry file locations (legacy paths for backward compatibility)
+// New code should use config.PathResolver for path resolution.
+var (
+	// GlobalRegistryPath is the default path for the global scaffold registry.
+	// Deprecated: Use config.PathResolver.GlobalRegistryFile() instead.
 	GlobalRegistryPath = "~/.guild/scaffold.yaml"
 
-	// ProjectRegistryPath is the path for project-level scaffold registry
+	// ProjectRegistryPath is the path for project-level scaffold registry.
+	// Deprecated: Use config.PathResolver.WorkspaceRegistryFile() instead.
 	ProjectRegistryPath = ".campaign/scaffold.yaml"
+)
 
-	// BuiltinScaffoldName is the name of the embedded guild-campaign scaffold
+// Default scaffold names
+const (
+	// BuiltinScaffoldName is the name of the example guild-campaign scaffold
 	BuiltinScaffoldName = "guild-campaign"
 )
+
+func init() {
+	// Update legacy paths based on environment configuration
+	// This maintains backward compatibility while allowing customization
+	if resolver, err := config.NewPathResolver(); err == nil {
+		// Update project registry path based on workspace dir setting
+		workspaceDir := resolver.WorkspaceDirNameValue()
+		if workspaceDir != config.DefaultWorkspaceDirName {
+			ProjectRegistryPath = workspaceDir + "/scaffold.yaml"
+		}
+	}
+}
 
 // RegistryConfig represents a scaffold registry configuration file.
 // Found at ~/.guild/scaffold.yaml (global) or .campaign/scaffold.yaml (project)
@@ -214,7 +233,8 @@ func LoadRegistryFromFile(ctx context.Context, path string) (*Registry, error) {
 
 	// Determine source based on path
 	source := "project"
-	if path == GlobalRegistryPath || expandedPath == expandPath(GlobalRegistryPath) {
+	globalExpanded := expandPath(GlobalRegistryPath)
+	if path == GlobalRegistryPath || expandedPath == globalExpanded {
 		source = "global"
 	}
 

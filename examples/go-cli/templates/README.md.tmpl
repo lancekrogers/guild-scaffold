@@ -1,0 +1,38 @@
+# {{ .vars.project_name }}
+
+{{ .vars.description }}
+
+{{ if .vars.author }}
+## Author
+
+{{ .vars.author }}
+{{ end }}
+
+## Installation
+
+```bash
+go install {{ .vars.module_path }}/cmd/{{ .vars.project_name }}@latest
+```
+
+## Usage
+
+```bash
+{{ .vars.project_name }}
+```
+
+## Development
+
+```bash
+# Build
+just build
+
+# Run
+just run
+
+# Test
+just test
+```
+
+## License
+
+TODO: Add license information

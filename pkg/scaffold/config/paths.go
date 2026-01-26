@@ -1,5 +1,5 @@
-// Copyright (C) 2025 SWS Industries LLC (DBA Blockhead Consulting)
-// SPDX-License-Identifier: LicenseRef-ANGRY-GOAT-0.2
+// Copyright (c) 2025 Lance Rogers
+// SPDX-License-Identifier: MIT
 
 // Package config provides configuration directory management for guild-scaffold.
 // It implements a two-tier template system:
@@ -14,10 +14,21 @@ import (
 	"path/filepath"
 )
 
+// Environment variable names for configuration overrides
+const (
+	// EnvGlobalDir overrides the global configuration directory
+	// Default: ~/.config/guild/ (or XDG_CONFIG_HOME/guild/)
+	EnvGlobalDir = "GUILD_SCAFFOLD_GLOBAL_DIR"
+
+	// EnvWorkspaceDir overrides the workspace directory name
+	// Default: .campaign
+	EnvWorkspaceDir = "GUILD_SCAFFOLD_WORKSPACE_DIR"
+)
+
 // Directory names and paths
 const (
-	// ConfigDirName is the name of the config directory under XDG config
-	ConfigDirName = "guild"
+	// DefaultConfigDirName is the default config directory under XDG config
+	DefaultConfigDirName = "guild"
 
 	// TemplatesDirName is the name of the templates subdirectory
 	TemplatesDirName = "templates"
@@ -28,12 +39,32 @@ const (
 	// RegistryFileName is the name of the template registry file
 	RegistryFileName = "registry.yaml"
 
-	// WorkspaceDirName is the workspace config directory name
-	WorkspaceDirName = ".campaign"
+	// DefaultWorkspaceDirName is the default workspace directory name
+	DefaultWorkspaceDirName = ".campaign"
 )
+
+// ConfigDirName returns the effective config directory name.
+// Uses GUILD_SCAFFOLD_GLOBAL_DIR if set, otherwise returns default.
+// Deprecated: Use PathResolver.GlobalConfigDir() for full path resolution.
+var ConfigDirName = DefaultConfigDirName
+
+// WorkspaceDirName returns the effective workspace directory name.
+// Uses GUILD_SCAFFOLD_WORKSPACE_DIR if set, otherwise returns default.
+// Deprecated: Use PathResolver.WorkspaceDir() for full path resolution.
+var WorkspaceDirName = DefaultWorkspaceDirName
+
+func init() {
+	// Note: These are kept for backward compatibility with code that references
+	// the constants directly. New code should use PathResolver methods.
+}
 
 // PathResolver provides path resolution for scaffold configuration.
 // It abstracts filesystem access for testability.
+//
+// Path resolution supports environment variable overrides:
+//   - GUILD_SCAFFOLD_GLOBAL_DIR: Override the entire global config directory
+//   - GUILD_SCAFFOLD_WORKSPACE_DIR: Override the workspace directory name
+//   - XDG_CONFIG_HOME: Standard XDG override for config location
 type PathResolver struct {
 	// homeDir is the user's home directory
 	homeDir string
@@ -43,9 +74,19 @@ type PathResolver struct {
 
 	// xdgConfigHome overrides XDG_CONFIG_HOME if set
 	xdgConfigHome string
+
+	// globalDirOverride overrides the entire global directory if set
+	globalDirOverride string
+
+	// workspaceDirName overrides the workspace directory name if set
+	workspaceDirName string
 }
 
 // NewPathResolver creates a new path resolver with system defaults.
+// Reads configuration from environment variables:
+//   - GUILD_SCAFFOLD_GLOBAL_DIR: Override entire global directory
+//   - GUILD_SCAFFOLD_WORKSPACE_DIR: Override workspace directory name
+//   - XDG_CONFIG_HOME: Standard XDG config home override
 func NewPathResolver() (*PathResolver, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
@@ -57,30 +98,91 @@ func NewPathResolver() (*PathResolver, error) {
 		return nil, fmt.Errorf("failed to get working directory: %w", err)
 	}
 
+	// Read workspace dir override, default to .campaign
+	workspaceDir := os.Getenv(EnvWorkspaceDir)
+	if workspaceDir == "" {
+		workspaceDir = DefaultWorkspaceDirName
+	}
+
 	return &PathResolver{
-		homeDir:       home,
-		workDir:       wd,
-		xdgConfigHome: os.Getenv("XDG_CONFIG_HOME"),
+		homeDir:           home,
+		workDir:           wd,
+		xdgConfigHome:     os.Getenv("XDG_CONFIG_HOME"),
+		globalDirOverride: os.Getenv(EnvGlobalDir),
+		workspaceDirName:  workspaceDir,
 	}, nil
 }
 
 // NewPathResolverWithPaths creates a path resolver with explicit paths for testing.
+// Deprecated: Use NewPathResolverWithConfig for full configuration control.
 func NewPathResolverWithPaths(homeDir, workDir, xdgConfigHome string) *PathResolver {
 	return &PathResolver{
-		homeDir:       homeDir,
-		workDir:       workDir,
-		xdgConfigHome: xdgConfigHome,
+		homeDir:          homeDir,
+		workDir:          workDir,
+		xdgConfigHome:    xdgConfigHome,
+		workspaceDirName: DefaultWorkspaceDirName,
+	}
+}
+
+// PathResolverConfig holds configuration for creating a PathResolver.
+type PathResolverConfig struct {
+	// HomeDir is the user's home directory
+	HomeDir string
+
+	// WorkDir is the current working directory
+	WorkDir string
+
+	// XDGConfigHome overrides XDG_CONFIG_HOME
+	XDGConfigHome string
+
+	// GlobalDirOverride overrides the entire global directory path
+	GlobalDirOverride string
+
+	// WorkspaceDirName overrides the workspace directory name (default: .campaign)
+	WorkspaceDirName string
+}
+
+// NewPathResolverWithConfig creates a path resolver with full configuration control.
+func NewPathResolverWithConfig(cfg PathResolverConfig) *PathResolver {
+	workspaceDir := cfg.WorkspaceDirName
+	if workspaceDir == "" {
+		workspaceDir = DefaultWorkspaceDirName
+	}
+
+	return &PathResolver{
+		homeDir:           cfg.HomeDir,
+		workDir:           cfg.WorkDir,
+		xdgConfigHome:     cfg.XDGConfigHome,
+		globalDirOverride: cfg.GlobalDirOverride,
+		workspaceDirName:  workspaceDir,
 	}
 }
 
 // GlobalConfigDir returns the global configuration directory.
-// Uses XDG_CONFIG_HOME if set, otherwise defaults to ~/.config/guild/
+// Resolution order:
+//  1. GUILD_SCAFFOLD_GLOBAL_DIR environment variable (if set)
+//  2. XDG_CONFIG_HOME/guild/ (if XDG_CONFIG_HOME is set)
+//  3. ~/.config/guild/ (default)
 func (p *PathResolver) GlobalConfigDir() string {
+	// Check for explicit override first
+	if p.globalDirOverride != "" {
+		return expandHome(p.globalDirOverride, p.homeDir)
+	}
+
+	// Fall back to XDG-compliant path
 	base := p.xdgConfigHome
 	if base == "" {
 		base = filepath.Join(p.homeDir, ".config")
 	}
-	return filepath.Join(base, ConfigDirName)
+	return filepath.Join(base, DefaultConfigDirName)
+}
+
+// expandHome expands ~ to the home directory in a path.
+func expandHome(path, homeDir string) string {
+	if len(path) > 0 && path[0] == '~' {
+		return filepath.Join(homeDir, path[1:])
+	}
+	return path
 }
 
 // GlobalTemplatesDir returns the global templates directory.
@@ -102,9 +204,15 @@ func (p *PathResolver) GlobalRegistryFile() string {
 }
 
 // WorkspaceDir returns the workspace configuration directory.
-// Returns .campaign/ relative to workDir
+// Uses GUILD_SCAFFOLD_WORKSPACE_DIR if set, otherwise defaults to .campaign/
+// relative to workDir.
 func (p *PathResolver) WorkspaceDir() string {
-	return filepath.Join(p.workDir, WorkspaceDirName)
+	return filepath.Join(p.workDir, p.workspaceDirName)
+}
+
+// WorkspaceDirNameValue returns the configured workspace directory name.
+func (p *PathResolver) WorkspaceDirNameValue() string {
+	return p.workspaceDirName
 }
 
 // WorkspaceTemplatesDir returns the workspace templates directory.

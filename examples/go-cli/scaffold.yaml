@@ -1,0 +1,43 @@
+name: go-cli
+version: "1.0.0"
+description: "A Go CLI application scaffold with main entry point and command structure"
+
+variables:
+  project_name:
+    type: string
+    required: true
+    description: "Name of the CLI tool"
+    pattern: "^[a-z][a-z0-9_-]*$"
+
+  description:
+    type: string
+    default: "A command-line tool"
+    description: "Brief description of the CLI tool"
+
+  module_path:
+    type: string
+    required: true
+    description: "Go module path (e.g., github.com/user/project)"
+
+  author:
+    type: string
+    default: ""
+    description: "Author name"
+
+  go_version:
+    type: string
+    default: "1.22"
+    description: "Go version for go.mod"
+
+tree:
+  cmd/:
+    "{{ .vars.project_name }}/":
+      main.go: main.go.tmpl
+  internal/:
+    _empty: true
+  pkg/:
+    _empty: true
+  go.mod: go.mod.tmpl
+  README.md: README.md.tmpl
+  .gitignore: gitignore.tmpl
+  justfile: justfile.tmpl

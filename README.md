@@ -2,6 +2,17 @@
 
 A generic, template-agnostic project scaffolding tool. Create and manage reusable project templates with variable substitution and directory structure generation.
 
+> **Note**: Despite the "Guild" name (from its origins), this tool is completely generic and works with any project type. The name is just a name.
+
+## Features
+
+- **Template-based scaffolding** - Define project structures with Go templates
+- **Variable substitution** - Customizable variables with types, defaults, and validation
+- **Registry system** - Discover scaffolds from multiple sources with precedence rules
+- **Dry-run mode** - Preview what will be created before executing
+- **Empty directory tracking** - Automatic `.gitkeep` generation for empty directories
+- **Configurable paths** - Override default directories via environment variables
+
 ## Installation
 
 ```bash
@@ -20,10 +31,34 @@ cp bin/scaffold ~/go/bin/
 scaffold list
 
 # Initialize a new project from a scaffold
-scaffold init my-project --template guild-campaign
+scaffold init my-project --template minimal
 
 # Validate a scaffold definition
-scaffold validate --template guild-campaign
+scaffold validate --template my-scaffold
+
+# Preview without creating files
+scaffold init my-project --template my-scaffold --dry-run
+```
+
+## Configuration
+
+### Environment Variables
+
+Guild Scaffold supports environment variable overrides for customizing paths:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `GUILD_SCAFFOLD_GLOBAL_DIR` | `~/.config/guild/` | Global configuration and templates directory |
+| `GUILD_SCAFFOLD_WORKSPACE_DIR` | `.campaign` | Workspace directory name (relative to project root) |
+| `XDG_CONFIG_HOME` | `~/.config` | Standard XDG base directory for config |
+
+Example:
+```bash
+# Use a custom global templates directory
+export GUILD_SCAFFOLD_GLOBAL_DIR=~/.my-scaffolds/
+
+# Use a custom workspace directory
+export GUILD_SCAFFOLD_WORKSPACE_DIR=.scaffold
 ```
 
 ## Registry System
@@ -32,13 +67,28 @@ Guild-scaffold uses a registry system to discover scaffolds from multiple source
 
 ### Source Priority (highest to lowest)
 
-1. **Project Registry** (`.campaign/scaffold.yaml`) - Project-specific scaffolds
-2. **Global Registry** (`~/.guild/scaffold.yaml`) - User-defined scaffolds
-3. **Builtin Scaffolds** - Embedded default scaffolds (e.g., `guild-campaign`)
+1. **Workspace Templates** (`.campaign/templates/`) - Project-specific scaffolds
+2. **Global Templates** (`~/.config/guild/templates/`) - User-installed scaffolds
+3. **Legacy Registries** - For backward compatibility with older configurations
 
 When the same scaffold name exists in multiple sources, the higher-priority source wins.
 
-### Registry Configuration
+### Installing Templates
+
+To install a scaffold from the examples directory:
+
+```bash
+# Copy an example scaffold to your global templates directory
+cp -r examples/guild-campaign ~/.config/guild/templates/
+
+# Or create a new scaffold
+mkdir -p ~/.config/guild/templates/my-scaffold
+# Then create scaffold.yaml and templates/ in that directory
+```
+
+### Legacy Registry Configuration
+
+For backward compatibility, registry YAML files are also supported:
 
 ```yaml
 # ~/.guild/scaffold.yaml or .campaign/scaffold.yaml
@@ -92,34 +142,32 @@ tree:
     _empty: true  # Creates .gitkeep in empty directory
   logs/:
     _empty: true
-  data/:
-    cache/:
-      _empty: true
 ```
+
+### Variable Types
+
+| Type | Description | Constraints |
+|------|-------------|-------------|
+| `string` | Text value | `pattern`, `enum` |
+| `int`/`integer` | Whole number | `min`, `max` |
+| `bool` | Boolean | - |
+| `array` | List of values | - |
+| `object` | Key-value map | - |
 
 ### Empty Directories
 
-Git doesn't track empty directories. To ensure empty directories are created and persist in version control, use `_empty: true`:
+Git doesn't track empty directories. Use `_empty: true` to create directories with `.gitkeep`:
 
 ```yaml
-myproject/:
+tree:
   logs/:
     _empty: true
   data/:
     cache/:
       _empty: true
-    temp/:
-      _empty: true
 ```
 
-This creates a `.gitkeep` file in each empty directory, allowing Git to track them. When you initialize a project from this scaffold:
-- `logs/.gitkeep` is created
-- `data/cache/.gitkeep` is created
-- `data/temp/.gitkeep` is created
-
-The `.gitkeep` file itself is empty and serves as a placeholder. If you later add actual files to these directories, you can safely delete the `.gitkeep` files.
-
-### Template Syntax
+## Template Syntax
 
 Templates use Go's `text/template` syntax with additional functions:
 
@@ -128,30 +176,41 @@ Templates use Go's `text/template` syntax with additional functions:
 
 Port: {{ .vars.port | default 8080 }}
 Name: {{ .vars.project_name | lower }}
+Hash: {{ hash .vars.project_name }}
 ```
 
-#### Available Template Functions
+### Available Template Functions
 
 **String manipulation:**
 - `lower`, `upper`, `title` - Case conversion
-- `trim`, `trimPrefix`, `trimSuffix` - Whitespace handling
+- `trimSpace` - Remove leading/trailing whitespace
 - `replace old new` - String replacement
 - `split delimiter` - Split into array
-- `join delimiter` - Join array into string
+- `join delimiter array` - Join array into string
+- `contains`, `hasPrefix`, `hasSuffix` - String checks
 
 **Formatting:**
-- `quote` - Wrap in quotes
-- `indent n` - Indent text by n spaces
+- `quote` - Wrap in double quotes
+- `indent n text` - Indent text by n spaces
 - `toYAML`, `toJSON` - Format as YAML/JSON
 
 **Path operations:**
-- `base`, `dir`, `ext` - Path components
-- `clean` - Clean path
+- `pathBase`, `pathDir`, `pathExt` - Path components
+- `pathJoin`, `pathClean` - Path manipulation
 
-**Conditionals:**
-- `default value` - Provide default if empty
-- `empty` - Check if value is empty
-- `coalesce` - Return first non-empty value
+**Utilities:**
+- `default value fallback` - Provide default if empty
+- `empty value` - Check if value is empty
+- `not bool` - Negate boolean
+- `hash input` - Generate short SHA256 hash (8 chars)
+
+**Date/Time:**
+- `now` - Current time
+- `date format` - Format current date
+- `dateISO` - ISO 8601 formatted date
+
+**Type checking:**
+- `isString`, `isMap`, `isList` - Type assertions
 
 ## Commands
 
@@ -182,6 +241,33 @@ Validate a scaffold definition and templates.
 scaffold validate --template my-scaffold
 ```
 
+### `scaffold sync`
+
+Sync scaffolds from a source to your global templates directory.
+
+```bash
+scaffold sync --from /path/to/scaffolds
+```
+
+## Examples
+
+The `examples/` directory contains sample scaffolds:
+
+- `guild-campaign/` - Full workspace scaffold with configuration directories
+- `minimal.yaml` - Minimal scaffold example
+- `go-cli/` - Go CLI application template
+- And more...
+
+To use an example:
+
+```bash
+# Copy to global templates
+cp -r examples/guild-campaign ~/.config/guild/templates/
+
+# Then use it
+scaffold init my-project --template guild-campaign
+```
+
 ## Development
 
 ```bash
@@ -192,6 +278,9 @@ just test integration   # Container-based integration tests
 # Build
 just build              # Build binary
 just check              # Vet + build
+
+# Lint
+just lint               # Run linter
 
 # Development
 just dev watch          # Watch mode
@@ -204,18 +293,54 @@ just dev pre-commit     # Pre-commit checks
 guild-scaffold/
 ├── cmd/scaffold/           # CLI entry point
 ├── pkg/scaffold/           # Core library
+│   ├── config/             # Path configuration
+│   ├── cli/                # CLI command implementations
 │   ├── registry.go         # Registry types and operations
 │   ├── loader.go           # Registry loading from sources
 │   ├── parser.go           # YAML parsing
 │   ├── renderer.go         # Template rendering
 │   ├── validator.go        # Scaffold validation
-│   ├── filesystem.go       # Safe file operations
-│   ├── cli/                # CLI command implementations
-│   └── builtin/            # Embedded scaffolds
+│   └── filesystem.go       # Safe file operations
+├── examples/               # Example scaffolds
 ├── tests/integration/      # Container-based tests
 └── .justfiles/             # Modular just recipes
 ```
 
+## Library Usage
+
+Guild Scaffold can be used as a Go library:
+
+```go
+import "github.com/lancekrogers/guild-scaffold/pkg/scaffold"
+
+// Create a registry loader
+loader, err := scaffold.NewRegistryLoader()
+if err != nil {
+    log.Fatal(err)
+}
+
+// Load all registries
+registry, err := loader.Load(ctx)
+if err != nil {
+    log.Fatal(err)
+}
+
+// Find and resolve a scaffold
+entry, err := loader.FindScaffold(ctx, "my-scaffold")
+if err != nil {
+    log.Fatal(err)
+}
+
+def, fsys, err := scaffold.ResolveScaffold(ctx, entry)
+if err != nil {
+    log.Fatal(err)
+}
+```
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
 ## License
 
-See LICENSE file.
+MIT License - see [LICENSE](LICENSE) for details.

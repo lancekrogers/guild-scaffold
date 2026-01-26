@@ -480,9 +480,14 @@ func getTemplateFuncMap() template.FuncMap {
 			return time.Now().Format(time.RFC3339)
 		},
 
-		// Guild-specific functions
+		// Hash functions
+		// hash is the primary function for generating short hashes from strings
+		"hash": func(input string) string {
+			return generateSimpleHash(input)
+		},
+		// campaignHash is deprecated - use hash instead
+		// Kept for backward compatibility with existing templates
 		"campaignHash": func(name string) string {
-			// Generate a simple hash for campaign names
 			return generateSimpleHash(name)
 		},
 		"quote": func(s string) string {
@@ -513,7 +518,8 @@ func getTemplateFuncMap() template.FuncMap {
 
 // Helper functions for template functions
 
-// generateSimpleHash creates a simple hash for campaign names
+// generateSimpleHash creates a short SHA256 hash from any string input.
+// Returns the first 8 characters of the hex-encoded hash for readability.
 func generateSimpleHash(input string) string {
 	hasher := sha256.New()
 	hasher.Write([]byte(input))

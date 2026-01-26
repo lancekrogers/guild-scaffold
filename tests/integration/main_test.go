@@ -1,8 +1,8 @@
 //go:build integration
 // +build integration
 
-// Copyright (C) 2025 SWS Industries LLC (DBA Blockhead Consulting)
-// SPDX-License-Identifier: LicenseRef-ANGRY-GOAT-0.2
+// Copyright (c) 2025 Lance Rogers
+// SPDX-License-Identifier: MIT
 
 package integration
 
