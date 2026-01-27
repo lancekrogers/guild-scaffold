@@ -1,3 +1,5 @@
+![Guild Scaffold Banner](docs/images/banner.png)
+
 # Guild Scaffold
 
 A template-agnostic project scaffolding tool. Create and manage reusable project templates with variable substitution and directory structure generation.
