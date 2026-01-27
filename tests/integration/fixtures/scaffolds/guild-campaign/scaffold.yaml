@@ -1,6 +1,7 @@
 name: guild-campaign
 version: "1.0.0"
 description: "Test scaffold for integration tests"
+templates_dir: templates
 
 variables:
   campaign_name:

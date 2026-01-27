@@ -3,3 +3,11 @@ description: {{ .vars.description | default "A test campaign" }}
 
 provider: {{ .vars.provider | default "anthropic" }}
 model: {{ .vars.model | default "claude-sonnet-4-20250514" }}
+
+{{ if eq .vars.provider "openai" }}
+# OpenAI configuration
+api_key_env: OPENAI_API_KEY
+{{ else if eq .vars.provider "anthropic" }}
+# Anthropic configuration
+api_key_env: ANTHROPIC_API_KEY
+{{ end }}
